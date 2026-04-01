@@ -26,6 +26,7 @@ school-app/
 
 Go to: **Settings → Secrets → Actions → New repository secret**
 
+<<<<<<< HEAD
 | Secret Name              | Value / Description                                                                 |
 |--------------------------|--------------------------------------------------------------------------------------|
 | `AWS_ACCESS_KEY_ID`      | ✅ Added — edusphere-deploy IAM user key                                             |
@@ -36,6 +37,18 @@ Go to: **Settings → Secrets → Actions → New repository secret**
 | `GRAFANA_ADMIN_PASSWORD` | ❌ Add — Strong password e.g. `Grafana@School2026!`                                 |
 | `SLACK_WEBHOOK_URL`      | ⏳ Optional — Slack incoming webhook for alerts                                      |
 | `CODECOV_TOKEN`          | ⏳ Optional — Skip for now                                                           |
+=======
+| Secret Name              | Description                                      |
+|--------------------------|--------------------------------------------------|
+| `AWS_ACCESS_KEY_ID`      | IAM user access key (SRE deploy role)            |
+| `AWS_SECRET_ACCESS_KEY`  | IAM user secret key                              |
+| `TF_STATE_BUCKET`        | S3 bucket name for Terraform remote state        |
+| `TF_API_TOKEN`           | Terraform Cloud token (if using TF Cloud)        |
+| `DB_PASSWORD`            | RDS PostgreSQL password (min 16 chars)           |
+| `GRAFANA_ADMIN_PASSWORD` | Grafana admin login password                     |
+| `SLACK_WEBHOOK_URL`      | Slack incoming webhook for deploy notifications  |
+| `CODECOV_TOKEN`          | Codecov.io token for coverage reports            |
+>>>>>>> c93f7d0208e1f7f2b71ef7b343c6dade7544e934
 
 ---
 
@@ -126,16 +139,23 @@ Push to main/develop
 
 ### Access Grafana
 ```
+<<<<<<< HEAD
 https://grafana.workforschool.com
+=======
+https://grafana.edusphere.yourdomain.com
+>>>>>>> c93f7d0208e1f7f2b71ef7b343c6dade7544e934
 Username: admin
 Password: (set via GRAFANA_ADMIN_PASSWORD secret)
 ```
 
+<<<<<<< HEAD
 ### Access School App
 ```
 https://workforschool.com
 ```
 
+=======
+>>>>>>> c93f7d0208e1f7f2b71ef7b343c6dade7544e934
 ---
 
 ## 🔄 Manual Operations

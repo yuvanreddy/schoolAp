@@ -5,7 +5,246 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>EduSphere — Smart School Management</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://wsbnlafqcvqizlhaeffb.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYm5sYWZxY3ZxaXpsaGFlZmZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMTc5MjgsImV4cCI6MjA5MDU5MzkyOH0.aGuDJcRDPCr1GsqEv6QmUsfa-8bcSCl0tBhg4XBd4Wk";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+</script>
 <style>
+/* ── LOGIN PAGE ─────────────────────────────── */
+.login-screen {
+  display: flex; min-height: 100vh;
+  background: linear-gradient(135deg, #dff0fb 0%, #b8ddf5 50%, #90c9ee 100%);
+  align-items: center; justify-content: center;
+  position: fixed; inset: 0; z-index: 9999;
+  transition: opacity 0.5s ease;
+}
+.login-screen.hidden { opacity: 0; pointer-events: none; }
+
+.login-left {
+  flex: 1; max-width: 520px; padding: 60px;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.login-right {
+  flex: 1; background: linear-gradient(145deg, #0077b6, #0096c7);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 60px; min-height: 100vh; position: relative; overflow: hidden;
+}
+.login-right::before {
+  content: ''; position: absolute; width: 400px; height: 400px;
+  background: rgba(255,255,255,0.05); border-radius: 50%;
+  top: -100px; right: -100px;
+}
+.login-right::after {
+  content: ''; position: absolute; width: 300px; height: 300px;
+  background: rgba(255,255,255,0.05); border-radius: 50%;
+  bottom: -80px; left: -80px;
+}
+
+.login-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 40px; }
+.login-logo-icon {
+  width: 48px; height: 48px; border-radius: 14px;
+  background: linear-gradient(135deg, #0077b6, #0096c7);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 700; color: #fff;
+}
+.login-logo-text { font-family: var(--font-head); font-size: 26px; color: #1a2e44; }
+.login-logo-sub { font-size: 11px; color: #5a7a96; letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
+
+.login-heading { font-family: var(--font-head); font-size: 32px; color: #1a2e44; margin-bottom: 8px; }
+.login-sub { font-size: 14px; color: #5a7a96; margin-bottom: 36px; line-height: 1.6; }
+
+.login-form { display: flex; flex-direction: column; gap: 18px; }
+.login-field { display: flex; flex-direction: column; gap: 6px; }
+.login-label { font-size: 12px; font-weight: 600; color: #5a7a96; letter-spacing: 0.5px; text-transform: uppercase; }
+.login-input {
+  background: #ffffff; border: 1.5px solid rgba(0,119,182,0.2);
+  border-radius: 12px; padding: 13px 16px; font-size: 14px;
+  color: #1a2e44; font-family: var(--font-body); outline: none;
+  transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,119,182,0.06);
+}
+.login-input:focus { border-color: #0077b6; box-shadow: 0 0 0 3px rgba(0,119,182,0.1); }
+.login-input::placeholder { color: #9bb5c8; }
+
+.login-school-select {
+  background: #ffffff; border: 1.5px solid rgba(0,119,182,0.2);
+  border-radius: 12px; padding: 13px 16px; font-size: 14px;
+  color: #1a2e44; font-family: var(--font-body); outline: none;
+  transition: all 0.2s; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,119,182,0.06);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%235a7a96' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 16px center;
+  padding-right: 40px;
+}
+.login-school-select:focus { border-color: #0077b6; box-shadow: 0 0 0 3px rgba(0,119,182,0.1); }
+
+.login-btn {
+  background: linear-gradient(135deg, #0077b6, #0096c7);
+  color: #fff; border: none; border-radius: 12px;
+  padding: 14px; font-size: 15px; font-weight: 600;
+  font-family: var(--font-body); cursor: pointer;
+  transition: all 0.2s; margin-top: 6px;
+  box-shadow: 0 4px 20px rgba(0,119,182,0.3);
+}
+.login-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,119,182,0.4); }
+.login-btn:active { transform: translateY(0); }
+
+.login-error {
+  background: rgba(230,57,70,0.08); border: 1px solid rgba(230,57,70,0.25);
+  border-radius: 10px; padding: 12px 16px; font-size: 13px;
+  color: #e63946; display: none;
+}
+.login-error.show { display: block; }
+
+.login-demo-hint {
+  margin-top: 24px; padding: 16px; background: rgba(0,119,182,0.06);
+  border-radius: 12px; border: 1px solid rgba(0,119,182,0.12);
+}
+.login-demo-hint-title { font-size: 11px; font-weight: 600; color: #5a7a96; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
+.login-demo-school {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 10px; border-radius: 8px; cursor: pointer;
+  transition: background 0.15s; font-size: 12px;
+  border: 1px solid transparent;
+}
+.login-demo-school:hover { background: rgba(0,119,182,0.08); border-color: rgba(0,119,182,0.15); }
+.login-demo-school-name { font-weight: 600; color: #1a2e44; }
+.login-demo-school-code { color: #5a7a96; font-family: monospace; font-size: 11px; background: rgba(0,119,182,0.08); padding: 2px 8px; border-radius: 4px; }
+
+/* RIGHT PANEL */
+.login-right-content { position: relative; z-index: 1; text-align: center; }
+.login-right h2 { font-family: var(--font-head); font-size: 34px; color: #fff; margin-bottom: 16px; line-height: 1.3; }
+.login-right p { font-size: 14px; color: rgba(255,255,255,0.8); line-height: 1.7; max-width: 320px; margin: 0 auto 40px; }
+.feature-list { list-style: none; text-align: left; display: flex; flex-direction: column; gap: 14px; }
+.feature-list li { display: flex; align-items: center; gap: 12px; color: #fff; font-size: 14px; }
+.feature-icon { width: 36px; height: 36px; background: rgba(255,255,255,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+
+/* ADMIN PANEL */
+.admin-screen {
+  display: none; position: fixed; inset: 0; z-index: 9998;
+  background: linear-gradient(135deg, #dff0fb 0%, #b8ddf5 100%);
+  align-items: center; justify-content: center;
+}
+.admin-screen.show { display: flex; }
+.admin-card {
+  background: #fff; border-radius: 20px; padding: 40px;
+  width: 800px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,119,182,0.15);
+}
+.school-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-radius: 12px; border: 1px solid rgba(0,119,182,0.12);
+  margin-bottom: 10px; background: #f7fbff; transition: all 0.15s;
+}
+.school-row:hover { border-color: #0077b6; background: #edf5fd; }
+.school-info { display: flex; align-items: center; gap: 14px; }
+.school-avatar {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.school-name { font-size: 14px; font-weight: 600; color: #1a2e44; }
+.school-code { font-size: 11px; color: #5a7a96; margin-top: 2px; }
+.school-actions { display: flex; gap: 8px; }
+.admin-btn { padding: 6px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; font-family: var(--font-body); transition: all 0.15s; }
+.admin-btn-edit { background: rgba(0,119,182,0.1); color: #0077b6; }
+.admin-btn-delete { background: rgba(230,57,70,0.1); color: #e63946; }
+.admin-btn-login { background: linear-gradient(135deg,#0077b6,#0096c7); color: #fff; }
+
+@media (max-width: 768px) {
+  .login-right { display: none; }
+  .login-left { padding: 32px 24px; max-width: 100%; }
+}
+
+/* ── SIGNUP STYLES ───────────────────────── */
+.signup-screen {
+  display: none; min-height: 100vh;
+  background: linear-gradient(135deg, #dff0fb 0%, #b8ddf5 50%, #90c9ee 100%);
+  position: fixed; inset: 0; z-index: 9998;
+  overflow-y: auto; padding: 40px 20px;
+}
+.signup-screen.show { display: block; }
+.signup-container { max-width: 680px; margin: 0 auto; background: #fff; border-radius: 24px; box-shadow: 0 20px 60px rgba(0,119,182,0.15); overflow: hidden; }
+.signup-header { background: linear-gradient(135deg,#0077b6,#0096c7); padding: 32px 40px; text-align: center; position: relative; overflow: hidden; }
+.signup-header::before { content:''; position:absolute; width:200px; height:200px; background:rgba(255,255,255,0.07); border-radius:50%; top:-60px; right:-40px; }
+.signup-header h1 { font-family:var(--font-head); font-size:26px; color:#fff; margin-bottom:6px; }
+.signup-header p { font-size:13px; color:rgba(255,255,255,0.8); }
+.signup-header-logo { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:14px; }
+.signup-header-icon { width:46px; height:46px; border-radius:14px; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:22px; color:#fff; }
+
+.signup-steps { display:flex; align-items:center; justify-content:center; padding:20px 40px; background:#f7fbff; border-bottom:1px solid rgba(0,119,182,0.1); }
+.signup-step { display:flex; align-items:center; gap:8px; }
+.step-num { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; transition:all 0.3s; background:rgba(0,119,182,0.1); color:#5a7a96; }
+.step-num.active { background:#0077b6; color:#fff; }
+.step-num.done { background:#10b981; color:#fff; }
+.step-lbl { font-size:12px; font-weight:600; color:#5a7a96; }
+.step-lbl.active { color:#0077b6; }
+.step-div { width:36px; height:2px; background:rgba(0,119,182,0.15); margin:0 6px; }
+.step-div.done { background:#10b981; }
+
+.signup-body { padding:32px 40px; }
+.step-panel { display:none; animation:fadeIn 0.3s ease; }
+.step-panel.active { display:block; }
+.step-title { font-family:var(--font-head); font-size:20px; color:#1a2e44; margin-bottom:5px; }
+.step-sub { font-size:13px; color:#5a7a96; margin-bottom:22px; }
+
+.sg-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.sg-grid .full { grid-column:1/-1; }
+.sg-field { display:flex; flex-direction:column; gap:5px; }
+.sg-label { font-size:11px; font-weight:600; color:#5a7a96; letter-spacing:0.5px; text-transform:uppercase; }
+.sg-input { background:#f0f7ff; border:1.5px solid rgba(0,119,182,0.18); border-radius:11px; padding:12px 14px; font-size:14px; color:#1a2e44; font-family:var(--font-body); outline:none; transition:all 0.2s; width:100%; }
+.sg-input:focus { border-color:#0077b6; background:#fff; box-shadow:0 0 0 3px rgba(0,119,182,0.08); }
+.sg-input::placeholder { color:#9bb5c8; }
+.sg-input.err { border-color:#e63946; background:#fff5f5; }
+.sg-hint { font-size:11px; color:#9bb5c8; margin-top:3px; }
+.sg-err { font-size:11px; color:#e63946; margin-top:3px; display:none; }
+.sg-err.show { display:block; }
+select.sg-input { cursor:pointer; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%235a7a96' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; padding-right:36px; background-color:#f0f7ff; }
+
+.color-picker { display:flex; gap:8px; flex-wrap:wrap; margin-top:5px; }
+.c-swatch { width:34px; height:34px; border-radius:9px; cursor:pointer; transition:all 0.2s; border:3px solid transparent; position:relative; }
+.c-swatch:hover { transform:scale(1.1); }
+.c-swatch.sel { border-color:#1a2e44; transform:scale(1.1); }
+.c-swatch.sel::after { content:'✓'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px; font-weight:700; }
+
+.emoji-grid { display:flex; gap:8px; flex-wrap:wrap; margin-top:5px; }
+.e-opt { width:38px; height:38px; border-radius:9px; border:2px solid rgba(0,119,182,0.15); background:#f0f7ff; display:flex; align-items:center; justify-content:center; font-size:19px; cursor:pointer; transition:all 0.2s; }
+.e-opt:hover { border-color:#0077b6; transform:scale(1.1); }
+.e-opt.sel { border-color:#0077b6; background:#e0f0ff; box-shadow:0 0 0 3px rgba(0,119,182,0.1); }
+
+.plan-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:6px; }
+.plan-card { border:2px solid rgba(0,119,182,0.15); border-radius:14px; padding:18px 14px; text-align:center; cursor:pointer; transition:all 0.2s; background:#f7fbff; position:relative; }
+.plan-card:hover { border-color:#0077b6; transform:translateY(-2px); }
+.plan-card.sel { border-color:#0077b6; background:rgba(0,119,182,0.05); }
+.plan-badge { position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:#0077b6; color:#fff; font-size:10px; font-weight:700; padding:3px 10px; border-radius:20px; white-space:nowrap; }
+.plan-icon { font-size:26px; margin-bottom:7px; }
+.plan-name { font-size:13px; font-weight:700; color:#1a2e44; margin-bottom:4px; }
+.plan-price { font-family:var(--font-head); font-size:20px; color:#0077b6; margin-bottom:7px; }
+.plan-price span { font-size:11px; color:#5a7a96; font-family:var(--font-body); }
+.plan-features { font-size:11px; color:#5a7a96; line-height:1.8; }
+
+.sg-nav { display:flex; align-items:center; justify-content:space-between; margin-top:28px; padding-top:18px; border-top:1px solid rgba(0,119,182,0.1); }
+.sg-btn { padding:12px 28px; border-radius:12px; border:none; cursor:pointer; font-size:14px; font-weight:600; font-family:var(--font-body); transition:all 0.2s; }
+.sg-btn.back { background:rgba(0,119,182,0.08); color:#5a7a96; }
+.sg-btn.back:hover { background:rgba(0,119,182,0.15); color:#0077b6; }
+.sg-btn.fwd { background:linear-gradient(135deg,#0077b6,#0096c7); color:#fff; box-shadow:0 4px 16px rgba(0,119,182,0.3); }
+.sg-btn.fwd:hover { transform:translateY(-1px); box-shadow:0 6px 22px rgba(0,119,182,0.4); }
+
+.success-box { text-align:center; padding:10px 0; }
+.success-icon { font-size:64px; margin-bottom:14px; animation:bounce 0.6s ease; }
+@keyframes bounce { 0%{transform:scale(0)} 60%{transform:scale(1.2)} 100%{transform:scale(1)} }
+.creds-box { background:#f0f7ff; border:1px solid rgba(0,119,182,0.2); border-radius:14px; padding:18px 22px; text-align:left; margin:18px 0; }
+.creds-row { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(0,119,182,0.08); }
+.creds-row:last-child { border-bottom:none; }
+.creds-key { font-size:11px; color:#5a7a96; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; }
+.creds-val { font-size:13px; color:#1a2e44; font-weight:600; background:rgba(0,119,182,0.08); padding:3px 10px; border-radius:6px; font-family:monospace; }
+
+.auth-tabs { display:flex; gap:0; margin-bottom:26px; background:rgba(0,119,182,0.07); border-radius:12px; padding:4px; }
+.auth-tab { flex:1; padding:10px; text-align:center; border-radius:9px; cursor:pointer; font-size:13px; font-weight:600; color:#5a7a96; transition:all 0.2s; }
+.auth-tab.active { background:#fff; color:#0077b6; box-shadow:0 2px 8px rgba(0,119,182,0.12); }
+</style>
 :root {
   --navy:#e8f4fd;--navy2:#dceefb;--teal:#0077b6;--amber:#f5a623;--rose:#e63946;--sky:#0096c7;
   --card:#ffffff;--card2:#f0f7ff;--text:#1a2e44;--muted:#5a7a96;--border:rgba(0,119,182,0.15);
@@ -213,6 +452,439 @@ textarea.form-input{resize:vertical;min-height:80px;}
 </style>
 </head>
 <body>
+
+<!-- ══════════════════════════════════════════ -->
+<!--           AUTH SCREEN (Login / Signup)    -->
+<!-- ══════════════════════════════════════════ -->
+<div class="login-screen" id="login-screen">
+
+  <!-- LEFT: Auth Forms -->
+  <div class="login-left" style="max-width:480px">
+    <div class="login-logo">
+      <div class="login-logo-icon">E</div>
+      <div>
+        <div class="login-logo-text">EduSphere</div>
+        <div class="login-logo-sub">School Management</div>
+      </div>
+    </div>
+
+    <!-- Auth Tabs -->
+    <div class="auth-tabs">
+      <div class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">🔐 Sign In</div>
+      <div class="auth-tab" id="tab-signup" onclick="switchAuthTab('signup')">🏫 Register School</div>
+    </div>
+
+    <!-- ── LOGIN PANEL ── -->
+    <div id="login-panel">
+      <div class="login-heading" style="font-size:24px;margin-bottom:6px">Welcome back 👋</div>
+      <div class="login-sub" style="margin-bottom:24px">Sign in to access your school's portal.</div>
+
+      <div class="login-form">
+        <div class="login-field">
+          <label class="login-label">Select Your School</label>
+          <select class="login-school-select" id="login-school-select" onchange="onSchoolSelect()">
+            <option value="">-- Choose your school --</option>
+          </select>
+        </div>
+        <div class="login-field">
+          <label class="login-label">Username</label>
+          <input class="login-input" id="login-username" type="text" placeholder="e.g. admin" autocomplete="username"/>
+        </div>
+        <div class="login-field">
+          <label class="login-label">Password</label>
+          <div style="position:relative">
+            <input class="login-input" id="login-password" type="password" placeholder="Enter your password" style="width:100%;padding-right:46px" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+            <span onclick="togglePwd()" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:16px;color:#5a7a96" id="pwd-eye">👁️</span>
+          </div>
+        </div>
+        <div class="login-error" id="login-error">❌ Invalid credentials. Please check and try again.</div>
+        <button class="login-btn" onclick="doLogin()">🔐 Sign In to Portal</button>
+        <div style="text-align:center;font-size:12px;color:#5a7a96">
+          New school? <span style="color:#0077b6;cursor:pointer;font-weight:600" onclick="switchAuthTab('signup')">Register here →</span>
+          &nbsp;|&nbsp; <span style="color:#0077b6;cursor:pointer" onclick="showAdminPanel()">Super Admin</span>
+        </div>
+      </div>
+
+      <!-- Registered Schools -->
+      <div class="login-demo-hint" style="margin-top:20px">
+        <div class="login-demo-hint-title">🏫 Registered Schools — click to fill</div>
+        <div id="demo-schools-list"></div>
+      </div>
+    </div>
+
+    <!-- ── QUICK SIGNUP PANEL (inline, not the full stepper) ── -->
+    <div id="signup-quick-panel" style="display:none">
+      <div class="login-heading" style="font-size:24px;margin-bottom:6px">Register Your School 🏫</div>
+      <div class="login-sub" style="margin-bottom:20px">Get started in under 2 minutes. Free 30-day trial.</div>
+      <button class="login-btn" onclick="openFullSignup()" style="font-size:15px;padding:16px;margin-bottom:14px">
+        🚀 Start School Registration
+      </button>
+      <div style="background:rgba(0,119,182,0.06);border-radius:12px;padding:16px;border:1px solid rgba(0,119,182,0.12)">
+        <div style="font-size:12px;font-weight:600;color:#5a7a96;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">What you get</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#1a2e44"><span style="color:#10b981;font-size:16px">✅</span>Unlimited students & teachers</div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#1a2e44"><span style="color:#10b981;font-size:16px">✅</span>Attendance & fee management</div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#1a2e44"><span style="color:#10b981;font-size:16px">✅</span>Your own login credentials</div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#1a2e44"><span style="color:#10b981;font-size:16px">✅</span>Custom school branding & color</div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#1a2e44"><span style="color:#0077b6;font-size:16px">🎁</span>30-day free trial — no credit card</div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:16px;font-size:12px;color:#5a7a96">
+        Already registered? <span style="color:#0077b6;cursor:pointer;font-weight:600" onclick="switchAuthTab('login')">← Sign in</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Feature Panel -->
+  <div class="login-right">
+    <div class="login-right-content">
+      <h2>Everything your school needs, in one place</h2>
+      <p>Manage students, track attendance, collect fees and communicate — all from a single dashboard.</p>
+      <ul class="feature-list">
+        <li><div class="feature-icon">👨‍🎓</div>Student records & profiles</li>
+        <li><div class="feature-icon">📋</div>Daily attendance tracking</li>
+        <li><div class="feature-icon">💳</div>Fee collection & receipts</li>
+        <li><div class="feature-icon">🗓️</div>Class timetable management</li>
+        <li><div class="feature-icon">📢</div>Notice board & announcements</li>
+        <li><div class="feature-icon">📊</div>Reports & analytics</li>
+      </ul>
+      <div style="margin-top:28px;padding:16px;background:rgba(255,255,255,0.1);border-radius:14px;font-size:13px;color:rgba(255,255,255,0.9);line-height:1.7">
+        🏆 Trusted by <strong>500+</strong> schools across India<br/>
+        ⭐ 4.9/5 rating from school administrators
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!--         FULL SIGNUP STEPPER               -->
+<!-- ══════════════════════════════════════════ -->
+<div class="signup-screen" id="signup-screen">
+  <div class="signup-container">
+
+    <!-- Header -->
+    <div class="signup-header">
+      <div class="signup-header-logo">
+        <div class="signup-header-icon">E</div>
+        <div style="text-align:left">
+          <div style="font-family:var(--font-head);font-size:20px;color:#fff">EduSphere</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.7);letter-spacing:2px;text-transform:uppercase">School Registration</div>
+        </div>
+      </div>
+      <h1>Register Your School</h1>
+      <p>Join 500+ schools already using EduSphere. Setup takes under 2 minutes.</p>
+    </div>
+
+    <!-- Step Indicators -->
+    <div class="signup-steps" id="signup-steps-bar">
+      <div class="signup-step">
+        <div class="step-num active" id="sn1">1</div>
+        <div class="step-lbl active" id="sl1">School Info</div>
+      </div>
+      <div class="step-div" id="sd1"></div>
+      <div class="signup-step">
+        <div class="step-num" id="sn2">2</div>
+        <div class="step-lbl" id="sl2">Branding</div>
+      </div>
+      <div class="step-div" id="sd2"></div>
+      <div class="signup-step">
+        <div class="step-num" id="sn3">3</div>
+        <div class="step-lbl" id="sl3">Admin Setup</div>
+      </div>
+      <div class="step-div" id="sd3"></div>
+      <div class="signup-step">
+        <div class="step-num" id="sn4">4</div>
+        <div class="step-lbl" id="sl4">Plan</div>
+      </div>
+    </div>
+
+    <div class="signup-body">
+
+      <!-- ── STEP 1: School Information ── -->
+      <div class="step-panel active" id="step1">
+        <div class="step-title">🏫 School Information</div>
+        <div class="step-sub">Tell us about your school. This will appear on your dashboard and reports.</div>
+        <div class="sg-grid">
+          <div class="sg-field full">
+            <label class="sg-label">School Name *</label>
+            <input class="sg-input" id="sg-school-name" placeholder="e.g. Delhi Public School, Sector 12"/>
+            <div class="sg-err" id="sg-school-name-err">School name is required</div>
+          </div>
+          <div class="sg-field">
+            <label class="sg-label">School Code *</label>
+            <input class="sg-input" id="sg-school-code" placeholder="e.g. DPS001" maxlength="10" oninput="this.value=this.value.toUpperCase()"/>
+            <div class="sg-hint">Unique identifier — 4–10 characters</div>
+            <div class="sg-err" id="sg-school-code-err">Code required (min 4 chars)</div>
+          </div>
+          <div class="sg-field">
+            <label class="sg-label">School Type</label>
+            <select class="sg-input" id="sg-school-type">
+              <option>Primary School (1–5)</option>
+              <option>Middle School (6–8)</option>
+              <option>High School (9–10)</option>
+              <option selected>Secondary School (1–10)</option>
+              <option>Senior Secondary (1–12)</option>
+              <option>College / University</option>
+            </select>
+          </div>
+          <div class="sg-field">
+            <label class="sg-label">Board / Affiliation</label>
+            <select class="sg-input" id="sg-board">
+              <option>CBSE</option><option>ICSE</option><option>State Board</option>
+              <option>IB</option><option>Cambridge</option><option>Other</option>
+            </select>
+          </div>
+          <div class="sg-field">
+            <label class="sg-label">City *</label>
+            <input class="sg-input" id="sg-city" placeholder="e.g. Mumbai"/>
+            <div class="sg-err" id="sg-city-err">City is required</div>
+          </div>
+          <div class="sg-field">
+            <label class="sg-label">State</label>
+            <select class="sg-input" id="sg-state">
+              <option>Maharashtra</option><option>Delhi</option><option>Karnataka</option>
+              <option>Tamil Nadu</option><option>Telangana</option><option>Gujarat</option>
+              <option>Rajasthan</option><option>Uttar Pradesh</option><option>West Bengal</option>
+              <option>Kerala</option><option>Punjab</option><option>Other</option>
+            </select>
+          </div>
+          <div class="sg-field full">
+            <label class="sg-label">School Address</label>
+            <input class="sg-input" id="sg-address" placeholder="Full address of your school"/>
+          </div>
+          <div class="sg-field">
+            <label class="sg-label">Principal Name *</label>
+            <input class="sg-input" id="sg-principal" placeholder="e.g. Dr. Ramesh Kumar"/>
+            <div class="sg-err" id="sg-principal-err">Principal name required</div>
+          </div>
+          <div class="sg-field">
+            <label class="sg-label">Phone Number</label>
+            <input class="sg-input" id="sg-phone" placeholder="e.g. 98765 43210" type="tel"/>
+          </div>
+          <div class="sg-field full">
+            <label class="sg-label">School Email</label>
+            <input class="sg-input" id="sg-email" placeholder="school@example.com" type="email"/>
+          </div>
+        </div>
+        <div class="sg-nav">
+          <button class="sg-btn back" onclick="closeFullSignup()">← Back to Login</button>
+          <button class="sg-btn fwd" onclick="stepNext(1)">Next: Branding →</button>
+        </div>
+      </div>
+
+      <!-- ── STEP 2: Branding ── -->
+      <div class="step-panel" id="step2">
+        <div class="step-title">🎨 School Branding</div>
+        <div class="step-sub">Personalise your EduSphere portal with your school's identity.</div>
+        <div class="sg-grid">
+          <div class="sg-field full">
+            <label class="sg-label">Choose School Emoji / Icon</label>
+            <div class="emoji-grid" id="emoji-grid">
+              <div class="e-opt sel" data-val="🏫" onclick="selectEmoji(this)">🏫</div>
+              <div class="e-opt" data-val="⛪" onclick="selectEmoji(this)">⛪</div>
+              <div class="e-opt" data-val="🎓" onclick="selectEmoji(this)">🎓</div>
+              <div class="e-opt" data-val="📚" onclick="selectEmoji(this)">📚</div>
+              <div class="e-opt" data-val="🌟" onclick="selectEmoji(this)">🌟</div>
+              <div class="e-opt" data-val="🔬" onclick="selectEmoji(this)">🔬</div>
+              <div class="e-opt" data-val="🏛️" onclick="selectEmoji(this)">🏛️</div>
+              <div class="e-opt" data-val="🎯" onclick="selectEmoji(this)">🎯</div>
+              <div class="e-opt" data-val="💡" onclick="selectEmoji(this)">💡</div>
+              <div class="e-opt" data-val="🌈" onclick="selectEmoji(this)">🌈</div>
+              <div class="e-opt" data-val="🦅" onclick="selectEmoji(this)">🦅</div>
+              <div class="e-opt" data-val="🌺" onclick="selectEmoji(this)">🌺</div>
+            </div>
+          </div>
+          <div class="sg-field full">
+            <label class="sg-label">School Theme Color</label>
+            <div class="color-picker" id="color-picker">
+              <div class="c-swatch sel" data-val="#0077b6" style="background:#0077b6" onclick="selectColor(this)"></div>
+              <div class="c-swatch" data-val="#0096c7" style="background:#0096c7" onclick="selectColor(this)"></div>
+              <div class="c-swatch" data-val="#10b981" style="background:#10b981" onclick="selectColor(this)"></div>
+              <div class="c-swatch" data-val="#059669" style="background:#059669" onclick="selectColor(this)"></div>
+              <div class="c-swatch" data-val="#f5a623" style="background:#f5a623" onclick="selectColor(this)"></div>
+              <div class="c-swatch" data-val="#ef4444" style="background:#ef4444" onclick="selectColor(this)"></div>
+              <div class="c-swatch" data-val="#e63946" style="background:#e63946" onclick="selectColor(this)"></div>
+              <div class="c-swatch" data-val="#8b5cf6" style="background:#8b5cf6" onclick="selectColor(this)"></div>
+              <div class="c-swatch" data-val="#ec4899" style="background:#ec4899" onclick="selectColor(this)"></div>
+              <div class="c-swatch" data-val="#1a2e44" style="background:#1a2e44" onclick="selectColor(this)"></div>
+            </div>
+          </div>
+          <div class="sg-field full">
+            <label class="sg-label">Preview</label>
+            <div id="branding-preview" style="background:#f7fbff;border-radius:14px;padding:20px;border:1px solid rgba(0,119,182,0.15);display:flex;align-items:center;gap:14px">
+              <div id="prev-icon" style="width:50px;height:50px;border-radius:14px;background:#0077b6;display:flex;align-items:center;justify-content:center;font-size:24px">🏫</div>
+              <div>
+                <div id="prev-name" style="font-family:var(--font-head);font-size:18px;color:#1a2e44">Your School Name</div>
+                <div id="prev-city" style="font-size:12px;color:#5a7a96;margin-top:2px">City, India</div>
+                <div id="prev-bar" style="height:4px;border-radius:4px;background:#0077b6;width:100px;margin-top:8px"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sg-nav">
+          <button class="sg-btn back" onclick="stepPrev(2)">← Back</button>
+          <button class="sg-btn fwd" onclick="stepNext(2)">Next: Admin Setup →</button>
+        </div>
+      </div>
+
+      <!-- ── STEP 3: Admin Credentials ── -->
+      <div class="step-panel" id="step3">
+        <div class="step-title">🔐 Admin Account Setup</div>
+        <div class="step-sub">Create the administrator login credentials for your school portal.</div>
+        <div class="sg-grid">
+          <div class="sg-field full">
+            <label class="sg-label">Admin Username *</label>
+            <input class="sg-input" id="sg-username" placeholder="e.g. principal or admin"/>
+            <div class="sg-hint">This will be used to log in to EduSphere</div>
+            <div class="sg-err" id="sg-username-err">Username required (min 4 chars)</div>
+          </div>
+          <div class="sg-field">
+            <label class="sg-label">Password *</label>
+            <div style="position:relative">
+              <input class="sg-input" id="sg-password" type="password" placeholder="Min 8 characters" style="padding-right:44px"/>
+              <span onclick="toggleSgPwd('sg-password','sg-eye1')" id="sg-eye1" style="position:absolute;right:13px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:15px;color:#5a7a96">👁️</span>
+            </div>
+            <div class="sg-err" id="sg-password-err">Password must be at least 8 characters</div>
+          </div>
+          <div class="sg-field">
+            <label class="sg-label">Confirm Password *</label>
+            <div style="position:relative">
+              <input class="sg-input" id="sg-confirm" type="password" placeholder="Re-enter password" style="padding-right:44px"/>
+              <span onclick="toggleSgPwd('sg-confirm','sg-eye2')" id="sg-eye2" style="position:absolute;right:13px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:15px;color:#5a7a96">👁️</span>
+            </div>
+            <div class="sg-err" id="sg-confirm-err">Passwords do not match</div>
+          </div>
+          <div class="sg-field full">
+            <label class="sg-label">Password Strength</label>
+            <div style="height:8px;background:rgba(0,119,182,0.1);border-radius:10px;overflow:hidden;margin-top:4px">
+              <div id="pwd-strength-bar" style="height:100%;border-radius:10px;width:0%;background:#e63946;transition:all 0.3s"></div>
+            </div>
+            <div id="pwd-strength-text" style="font-size:11px;color:#5a7a96;margin-top:4px">Enter a password</div>
+          </div>
+          <div class="sg-field full">
+            <label class="sg-label">Security PIN (4-digit, for recovery)</label>
+            <input class="sg-input" id="sg-pin" type="number" placeholder="e.g. 1234" maxlength="4" style="letter-spacing:8px;font-size:20px;text-align:center"/>
+            <div class="sg-hint">Remember this PIN — used for password recovery</div>
+          </div>
+          <div class="sg-field full" style="margin-top:8px">
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:14px;background:rgba(0,119,182,0.06);border-radius:12px;border:1px solid rgba(0,119,182,0.12)">
+              <input type="checkbox" id="sg-terms" style="margin-top:2px;cursor:pointer;accent-color:#0077b6;width:16px;height:16px"/>
+              <label for="sg-terms" style="font-size:13px;color:#1a2e44;cursor:pointer;line-height:1.6">
+                I agree to the <span style="color:#0077b6">Terms of Service</span> and <span style="color:#0077b6">Privacy Policy</span>. I confirm I am authorised to register this school on EduSphere.
+              </label>
+            </div>
+            <div class="sg-err" id="sg-terms-err">Please accept the terms to continue</div>
+          </div>
+        </div>
+        <div class="sg-nav">
+          <button class="sg-btn back" onclick="stepPrev(3)">← Back</button>
+          <button class="sg-btn fwd" onclick="stepNext(3)">Next: Choose Plan →</button>
+        </div>
+      </div>
+
+      <!-- ── STEP 4: Plan Selection ── -->
+      <div class="step-panel" id="step4">
+        <div class="step-title">💎 Choose Your Plan</div>
+        <div class="step-sub">Start free for 30 days. No credit card required. Upgrade anytime.</div>
+        <div class="plan-grid">
+          <div class="plan-card" id="plan-basic" onclick="selectPlan('basic')">
+            <div class="plan-icon">📋</div>
+            <div class="plan-name">Basic</div>
+            <div class="plan-price">Free <span>/month</span></div>
+            <div class="plan-features">Up to 100 students<br/>Attendance & notices<br/>Basic reports<br/>1 admin user</div>
+          </div>
+          <div class="plan-card sel popular" id="plan-pro" onclick="selectPlan('pro')">
+            <div class="plan-badge">⭐ Most Popular</div>
+            <div class="plan-icon">🚀</div>
+            <div class="plan-name">Professional</div>
+            <div class="plan-price">₹999 <span>/month</span></div>
+            <div class="plan-features">Unlimited students<br/>All features + fees<br/>Advanced analytics<br/>5 admin users</div>
+          </div>
+          <div class="plan-card" id="plan-enterprise" onclick="selectPlan('enterprise')">
+            <div class="plan-icon">🏛️</div>
+            <div class="plan-name">Enterprise</div>
+            <div class="plan-price">₹2,499 <span>/month</span></div>
+            <div class="plan-features">Multi-branch support<br/>Custom branding<br/>API access<br/>Unlimited admins</div>
+          </div>
+        </div>
+        <div style="margin-top:18px;padding:14px;background:rgba(16,185,129,0.08);border-radius:12px;border:1px solid rgba(16,185,129,0.2);font-size:13px;color:#065f46;display:flex;align-items:center;gap:10px">
+          🎁 <strong>All plans include a 30-day free trial.</strong> You won't be charged until the trial ends.
+        </div>
+        <div class="sg-nav">
+          <button class="sg-btn back" onclick="stepPrev(4)">← Back</button>
+          <button class="sg-btn fwd" onclick="completeSignup()">✅ Complete Registration</button>
+        </div>
+      </div>
+
+      <!-- ── STEP 5: Success ── -->
+      <div class="step-panel" id="step5">
+        <div class="success-box">
+          <div class="success-icon">🎉</div>
+          <div style="font-family:var(--font-head);font-size:28px;color:#1a2e44;margin-bottom:8px">Registration Successful!</div>
+          <div style="font-size:14px;color:#5a7a96;margin-bottom:20px">Your school is now registered on EduSphere. Save your login credentials below.</div>
+          <div class="creds-box" id="success-creds"></div>
+          <div style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.25);border-radius:12px;padding:14px;font-size:13px;color:#8a6000;margin-bottom:20px;text-align:left">
+            ⚠️ Please save these credentials. Your password cannot be recovered without your security PIN.
+          </div>
+          <button class="sg-btn fwd" style="width:100%;justify-content:center" onclick="loginAfterSignup()">
+            🚀 Launch My Portal Now
+          </button>
+          <div style="margin-top:12px;font-size:12px;color:#5a7a96">
+            <span onclick="closeFullSignup()" style="cursor:pointer;color:#0077b6">← Return to login page</span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end signup-body -->
+  </div><!-- end signup-container -->
+</div><!-- end signup-screen -->
+
+<!-- ══════════════════════════════════════════ -->
+<!--            SUPER ADMIN PANEL               -->
+<!-- ══════════════════════════════════════════ -->
+<div class="admin-screen" id="admin-screen">
+  <div class="admin-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px">
+      <div>
+        <div style="font-family:var(--font-head);font-size:24px;color:#1a2e44">🛡️ Super Admin Panel</div>
+        <div style="font-size:13px;color:#5a7a96;margin-top:4px">Manage all registered schools</div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="admin-btn admin-btn-edit" onclick="openAddSchoolForm()">+ Add School</button>
+        <button class="admin-btn" style="background:rgba(0,0,0,0.06);color:#5a7a96" onclick="hideAdminPanel()">✕ Close</button>
+      </div>
+    </div>
+
+    <!-- Add School Form -->
+    <div id="add-school-form" style="display:none;background:#f0f7ff;border-radius:14px;padding:20px;margin-bottom:20px;border:1px solid rgba(0,119,182,0.15)">
+      <div style="font-size:13px;font-weight:600;color:#1a2e44;margin-bottom:14px">Add New School</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><label class="login-label">School Name</label><input class="login-input" id="new-school-name" placeholder="Delhi Public School" style="margin-top:5px"/></div>
+        <div><label class="login-label">School Code</label><input class="login-input" id="new-school-code" placeholder="DPS001" style="margin-top:5px"/></div>
+        <div><label class="login-label">Admin Username</label><input class="login-input" id="new-school-user" placeholder="admin" style="margin-top:5px"/></div>
+        <div><label class="login-label">Password</label><input class="login-input" id="new-school-pass" placeholder="password123" style="margin-top:5px"/></div>
+        <div><label class="login-label">City</label><input class="login-input" id="new-school-city" placeholder="New Delhi" style="margin-top:5px"/></div>
+        <div><label class="login-label">School Color</label>
+          <select class="login-school-select" id="new-school-color" style="margin-top:5px">
+            <option value="#0077b6">Blue</option><option value="#10b981">Green</option>
+            <option value="#f5a623">Amber</option><option value="#e63946">Red</option>
+            <option value="#8b5cf6">Purple</option><option value="#0ea5e9">Sky</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button class="admin-btn admin-btn-login" onclick="addSchool()">✅ Add School</button>
+        <button class="admin-btn" style="background:rgba(0,0,0,0.06);color:#5a7a96" onclick="document.getElementById('add-school-form').style.display='none'">Cancel</button>
+      </div>
+    </div>
+
+    <div id="admin-school-list"></div>
+
+    <div style="margin-top:20px;padding:14px;background:rgba(245,166,35,0.08);border-radius:10px;border:1px solid rgba(245,166,35,0.2);font-size:12px;color:#8a6000">
+      ⚠️ Super Admin credentials: <strong>username: superadmin</strong> &nbsp;|&nbsp; <strong>password: edusphere2026</strong>
+    </div>
+  </div>
+</div>
 
 <!-- SIDEBAR -->
 <aside class="sidebar">
@@ -742,8 +1414,9 @@ function renderStudents(){
   document.getElementById("student-count").textContent=`Showing ${list.length} of ${students.length} students`;
   document.getElementById("nav-count").textContent=students.length;
 }
-function deleteStudent(id){
+async function deleteStudent(id){
   if(!confirm("Remove this student from records?"))return;
+  await deleteStudentFromDB(id);
   students=students.filter(s=>s.id!==id);
   renderStudents();renderDashboard();
   showToast("Student removed","var(--rose)");
@@ -779,7 +1452,7 @@ function previewPhoto(input){
   r.onload=e=>{photoData=e.target.result;document.getElementById("photo-prev").src=photoData;document.getElementById("photo-prev").style.display="block";document.getElementById("photo-ph").style.display="none";};
   r.readAsDataURL(file);
 }
-function saveStudent(e){
+async function saveStudent(e){
   e.preventDefault();
   const g=id=>document.getElementById(id).value.trim();
   const data={name:g("f-name"),roll:g("f-roll"),cls:document.getElementById("f-class").value,email:g("f-email"),parent:g("f-parent"),contact:g("f-contact"),pemail:g("f-pemail"),relation:document.getElementById("f-relation").value,address:g("f-address"),dob:g("f-dob"),gender:document.getElementById("f-gender").value,fee:document.getElementById("f-fee").value,amount:Number(g("f-amount"))||0,photo:photoData};
@@ -835,8 +1508,11 @@ function updateAttStats(){
   document.getElementById("att-rate").textContent=total?Math.round(present/total*100)+"%":"0%";
 }
 function saveAttendance(){
-  const marked=students.filter(s=>attendance[s.id+"_"+TODAY]).length;
-  showToast("Attendance saved for "+marked+" students!");
+  if(currentSchool) saveAttendanceToDB(currentSchool.id);
+  else {
+    const marked=students.filter(s=>attendance[s.id+"_"+TODAY]).length;
+    showToast("Attendance saved for "+marked+" students!");
+  }
   renderDashboard();
 }
 function exportAttendance(){
@@ -1009,20 +1685,411 @@ function postNotice(){
   if(!title){showToast("Enter a notice title","var(--rose)");return;}
   const now=new Date();
   const dateStr=now.getDate()+" "+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][now.getMonth()]+" "+now.getFullYear();
-  notices.unshift({id:Date.now(),title,cat,msg:msg||title,date:dateStr,color:noticeColors[cat]||"#a78bfa",views:0});
+  const n={id:Date.now(),title,cat,msg:msg||title,date:dateStr,color:noticeColors[cat]||"#a78bfa",views:0};
+  notices.unshift(n);
+  if(currentSchool) saveNoticeToDB(n, currentSchool.id);
   document.getElementById("quick-notice-title").value="";document.getElementById("quick-notice-msg").value="";
   renderNotices();renderDashboard();showToast("Notice published!");
 }
 
 // ══════════════════════════════════════════
+// SCHOOL DATABASE & AUTH SYSTEM (Supabase)
+// ══════════════════════════════════════════
+let schools = []; // loaded from Supabase
+
+let currentSchool=null,currentUser=null,sgStep=1,selectedEmoji="🏫",selectedColor="#0077b6",selectedPlan="pro",signupSchoolResult=null;
+
+function switchAuthTab(tab){
+  document.getElementById("tab-login").classList.toggle("active",tab==="login");
+  document.getElementById("tab-signup").classList.toggle("active",tab==="signup");
+  document.getElementById("login-panel").style.display=tab==="login"?"block":"none";
+  document.getElementById("signup-quick-panel").style.display=tab==="signup"?"block":"none";
+}
+function initLogin(){
+  const sel=document.getElementById("login-school-select");
+  sel.innerHTML='<option value="">-- Choose your school --</option>';
+  schools.forEach(s=>{const o=document.createElement("option");o.value=s.id;o.textContent=s.emoji+" "+s.name+" ("+s.city+")";sel.appendChild(o);});
+  document.getElementById("demo-schools-list").innerHTML=schools.slice(0,4).map(s=>
+    `<div class="login-demo-school" onclick="autoFill(${s.id})"><div class="school-info"><span style="font-size:17px">${s.emoji}</span><div><div class="login-demo-school-name">${s.name}</div><div style="font-size:11px;color:#5a7a96">${s.city}</div></div></div><span class="login-demo-school-code">${s.username} / ${s.password}</span></div>`
+  ).join("");
+}
+function autoFill(id){const s=schools.find(s=>s.id===id);if(!s)return;document.getElementById("login-school-select").value=id;document.getElementById("login-username").value=s.username;document.getElementById("login-password").value=s.password;}
+function onSchoolSelect(){const s=schools.find(s=>s.id===Number(document.getElementById("login-school-select").value));if(s){document.getElementById("login-username").value=s.username;document.getElementById("login-password").focus();}}
+function togglePwd(){const i=document.getElementById("login-password"),e=document.getElementById("pwd-eye");i.type=i.type==="password"?"text":"password";e.textContent=i.type==="password"?"👁️":"🙈";}
+function toggleSgPwd(iid,eid){const i=document.getElementById(iid),e=document.getElementById(eid);i.type=i.type==="password"?"text":"password";e.textContent=i.type==="password"?"👁️":"🙈";}
+
+function doLogin(){
+  const schoolId=Number(document.getElementById("login-school-select").value);
+  const username=document.getElementById("login-username").value.trim();
+  const password=document.getElementById("login-password").value.trim();
+  const err=document.getElementById("login-error");
+  if(username==="superadmin"&&password==="edusphere2026"){err.classList.remove("show");showAdminPanel();return;}
+  const school=schools.find(s=>s.id===schoolId&&s.username===username&&s.password===password);
+  if(!school){err.classList.add("show");document.getElementById("login-password").value="";return;}
+  err.classList.remove("show");
+  launchApp(school,username);
+}
+
+function launchApp(school,username){
+  ["login-screen","signup-screen"].forEach(id=>{const el=document.getElementById(id);if(el){el.classList.add("hidden");el.classList.remove("show");setTimeout(()=>{el.style.display="none";},500);}});
+  currentSchool=school;currentUser=username||school.username;
+  document.title="EduSphere — "+school.name;
+  document.querySelector(".logo-text").textContent=school.name.length>20?school.name.split(" ").slice(0,3).join(" "):school.name;
+  document.querySelector(".logo-icon").textContent=school.emoji;
+  document.querySelector(".logo-icon").style.background="linear-gradient(135deg,"+school.color+","+school.color+"bb)";
+  document.querySelector(".logo-sub").textContent=school.city;
+  document.querySelector(".user-card").querySelector("div>div:first-child").textContent=currentUser;
+  document.querySelector(".user-card").querySelector("div>div:last-child").textContent=school.name;
+  document.documentElement.style.setProperty("--teal",school.color);
+  document.documentElement.style.setProperty("--sky",school.color+"bb");
+  document.getElementById("page-heading").innerHTML="Good morning, <span>"+school.emoji+" "+school.name+"!</span>";
+  // Load this school's data from Supabase
+  loadStudentsFromDB(school.id);
+  loadNoticesFromDB(school.id);
+  renderDashboard();renderStudents();renderFees();renderNotices();
+}
+
+function doLogout(){
+  currentSchool=null;currentUser=null;
+  const s=document.getElementById("login-screen");
+  s.style.display="flex";s.style.opacity="0";s.classList.remove("hidden");
+  setTimeout(()=>{s.style.opacity="1";},10);
+  document.getElementById("login-password").value="";
+  document.documentElement.style.removeProperty("--teal");
+  document.documentElement.style.removeProperty("--sky");
+  switchAuthTab("login");
+}
+
+function showAdminPanel(){renderAdminSchoolList();document.getElementById("admin-screen").classList.add("show");}
+function hideAdminPanel(){document.getElementById("admin-screen").classList.remove("show");}
+function renderAdminSchoolList(){
+  document.getElementById("admin-school-list").innerHTML=schools.map(s=>`
+    <div class="school-row"><div class="school-info"><div class="school-avatar" style="background:${s.color}">${s.emoji}</div><div><div class="school-name">${s.name}</div><div class="school-code">${s.code} · ${s.city} · ${s.username}/${s.password} · ${s.plan||'basic'}</div></div></div>
+    <div class="school-actions"><button class="admin-btn admin-btn-login" onclick="adminLoginAs(${s.id})">🚀 Login</button><button class="admin-btn admin-btn-delete" onclick="removeSchool(${s.id})">🗑</button></div></div>`).join("");
+}
+function adminLoginAs(id){const s=schools.find(s=>s.id===id);if(!s)return;hideAdminPanel();launchApp(s,s.username);}
+function removeSchool(id){if(!confirm("Remove?"))return;schools=schools.filter(s=>s.id!==id);renderAdminSchoolList();initLogin();showToast("School removed","var(--rose)");}
+function openAddSchoolForm(){document.getElementById("add-school-form").style.display="block";}
+function addSchool(){
+  const name=document.getElementById("new-school-name").value.trim(),code=document.getElementById("new-school-code").value.trim(),user=document.getElementById("new-school-user").value.trim(),pass=document.getElementById("new-school-pass").value.trim(),city=document.getElementById("new-school-city").value.trim(),color=document.getElementById("new-school-color").value;
+  if(!name||!code||!user||!pass){alert("Fill all fields");return;}
+  const newS={id:Date.now(),name,code,city:city||"India",username:user,password:pass,color,emoji:"🏫",plan:"basic"};
+  saveSchoolToDB(newS);
+  schools.push(newS);
+  document.getElementById("add-school-form").style.display="none";
+  ["new-school-name","new-school-code","new-school-user","new-school-pass","new-school-city"].forEach(id=>document.getElementById(id).value="");
+  renderAdminSchoolList();initLogin();showToast(name+" added!");
+}
+
+// ── SIGNUP STEPPER ──
+function openFullSignup(){
+  sgStep=1;selectedEmoji="🏫";selectedColor="#0077b6";selectedPlan="pro";
+  goToStep(1);
+  document.getElementById("signup-screen").style.display="block";
+  document.getElementById("signup-screen").classList.add("show");
+  ["sg-school-name","sg-school-code","sg-city","sg-address","sg-principal","sg-phone","sg-email","sg-username","sg-password","sg-confirm","sg-pin"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+  document.getElementById("sg-terms").checked=false;
+  updateBrandingPreview();
+  window.scrollTo(0,0);
+}
+function closeFullSignup(){document.getElementById("signup-screen").classList.remove("show");setTimeout(()=>document.getElementById("signup-screen").style.display="none",400);}
+function loginAfterSignup(){closeFullSignup();if(signupSchoolResult)launchApp(signupSchoolResult,signupSchoolResult.username);}
+
+function goToStep(n){
+  [1,2,3,4,5].forEach(i=>{
+    document.getElementById("step"+i).classList.toggle("active",i===n);
+    if(i<=4){
+      const nm=document.getElementById("sn"+i),lb=document.getElementById("sl"+i);
+      if(nm){nm.classList.toggle("active",i===n);nm.classList.toggle("done",i<n);nm.textContent=i<n?"✓":i;}
+      if(lb){lb.classList.toggle("active",i===n);}
+      const dv=document.getElementById("sd"+i);if(dv)dv.classList.toggle("done",i<n);
+    }
+  });
+  sgStep=n;
+}
+function stepNext(s){if(!validateStep(s))return;goToStep(s+1);if(s+1===2)updateBrandingPreview();window.scrollTo(0,0);}
+function stepPrev(s){goToStep(s-1);}
+
+function validateStep(step){
+  let ok=true;
+  const showErr=(id,show)=>{const el=document.getElementById(id);if(el)el.classList.toggle("show",show);};
+  if(step===1){
+    if(!document.getElementById("sg-school-name").value.trim()){showErr("sg-school-name-err",true);ok=false;}else showErr("sg-school-name-err",false);
+    if(document.getElementById("sg-school-code").value.trim().length<4){showErr("sg-school-code-err",true);ok=false;}else showErr("sg-school-code-err",false);
+    if(!document.getElementById("sg-city").value.trim()){showErr("sg-city-err",true);ok=false;}else showErr("sg-city-err",false);
+    if(!document.getElementById("sg-principal").value.trim()){showErr("sg-principal-err",true);ok=false;}else showErr("sg-principal-err",false);
+    if(schools.find(s=>s.code===document.getElementById("sg-school-code").value.trim().toUpperCase())){alert("School code already exists.");ok=false;}
+  }
+  if(step===3){
+    const user=document.getElementById("sg-username").value.trim(),pass=document.getElementById("sg-password").value,conf=document.getElementById("sg-confirm").value,terms=document.getElementById("sg-terms").checked;
+    if(user.length<4){showErr("sg-username-err",true);ok=false;}else showErr("sg-username-err",false);
+    if(pass.length<8){showErr("sg-password-err",true);ok=false;}else showErr("sg-password-err",false);
+    if(pass!==conf){showErr("sg-confirm-err",true);ok=false;}else showErr("sg-confirm-err",false);
+    if(!terms){showErr("sg-terms-err",true);ok=false;}else showErr("sg-terms-err",false);
+  }
+  return ok;
+}
+
+function completeSignup(){
+  const g=id=>{const el=document.getElementById(id);return el?el.value.trim():"";};
+  const name=g("sg-school-name"),code=g("sg-school-code").toUpperCase(),city=g("sg-city"),state=document.getElementById("sg-state").value,username=g("sg-username"),password=document.getElementById("sg-password").value;
+  const newSchool={id:Date.now(),name,code,city:city+(state?", "+state:""),username,password,color:selectedColor,emoji:selectedEmoji,plan:selectedPlan,principal:g("sg-principal"),phone:g("sg-phone"),email:g("sg-email")};
+  // Save to Supabase
+  saveSchoolToDB(newSchool).then(dbSchool => {
+    if(dbSchool) { newSchool.id = dbSchool.id; signupSchoolResult = newSchool; }
+  });
+  schools.push(newSchool);signupSchoolResult=newSchool;initLogin();
+  document.getElementById("success-creds").innerHTML=`
+    <div class="creds-row"><span class="creds-key">School Name</span><span class="creds-val">${name}</span></div>
+    <div class="creds-row"><span class="creds-key">School Code</span><span class="creds-val">${code}</span></div>
+    <div class="creds-row"><span class="creds-key">Username</span><span class="creds-val">${username}</span></div>
+    <div class="creds-row"><span class="creds-key">Password</span><span class="creds-val">${password}</span></div>
+    <div class="creds-row"><span class="creds-key">Plan</span><span class="creds-val" style="color:#059669">${selectedPlan} 🎁 30-day trial</span></div>`;
+  goToStep(5);
+}
+
+function selectEmoji(el){document.querySelectorAll(".e-opt").forEach(e=>e.classList.remove("sel"));el.classList.add("sel");selectedEmoji=el.dataset.val;updateBrandingPreview();}
+function selectColor(el){document.querySelectorAll(".c-swatch").forEach(e=>e.classList.remove("sel"));el.classList.add("sel");selectedColor=el.dataset.val;updateBrandingPreview();}
+function selectPlan(plan){selectedPlan=plan;["basic","pro","enterprise"].forEach(p=>document.getElementById("plan-"+p).classList.toggle("sel",p===plan));}
+function updateBrandingPreview(){
+  const name=document.getElementById("sg-school-name")?.value.trim()||"Your School Name";
+  const city=document.getElementById("sg-city")?.value.trim()||"City, India";
+  document.getElementById("prev-icon").textContent=selectedEmoji;
+  document.getElementById("prev-icon").style.background="linear-gradient(135deg,"+selectedColor+","+selectedColor+"bb)";
+  document.getElementById("prev-name").textContent=name;
+  document.getElementById("prev-city").textContent=city;
+  document.getElementById("prev-bar").style.background=selectedColor;
+}
+
+document.getElementById("sg-password")?.addEventListener("input",function(){
+  const v=this.value;let s=0;
+  if(v.length>=8)s++;if(v.length>=12)s++;if(/[A-Z]/.test(v))s++;if(/[0-9]/.test(v))s++;if(/[^A-Za-z0-9]/.test(v))s++;
+  const colors=["#e63946","#f5a623","#f5a623","#10b981","#0077b6"],labels=["Very weak","Weak","Fair","Strong","Very strong"];
+  const bar=document.getElementById("pwd-strength-bar"),txt=document.getElementById("pwd-strength-text");
+  if(bar){bar.style.width=(s*20)+"%";bar.style.background=colors[s-1]||"#e63946";}
+  if(txt)txt.textContent=v.length?(labels[s-1]||"Very weak"):"Enter a password";
+});
+
+document.querySelector(".sidebar-bottom").insertAdjacentHTML("beforeend",
+  `<div style="margin-top:8px"><button onclick="doLogout()" style="width:100%;padding:9px;border-radius:10px;border:1px solid rgba(230,57,70,0.25);background:rgba(230,57,70,0.06);color:#e63946;cursor:pointer;font-size:13px;font-weight:600;font-family:var(--font-body);transition:all 0.2s" onmouseover="this.style.background='rgba(230,57,70,0.12)'" onmouseout="this.style.background='rgba(230,57,70,0.06)'">🚪 Sign Out</button></div>`
+);
+
+// ══════════════════════════════════════════
+// SUPABASE DATABASE FUNCTIONS
+// ══════════════════════════════════════════
+
+// ── Loading indicator ─────────────────────
+function showLoader(msg) {
+  let el = document.getElementById("db-loader");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "db-loader";
+    el.style.cssText = "position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0077b6;color:#fff;padding:10px 22px;border-radius:30px;font-size:13px;font-weight:600;z-index:9999;display:flex;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,119,182,0.4)";
+    document.body.appendChild(el);
+  }
+  el.innerHTML = `<span style="animation:spin 1s linear infinite;display:inline-block">⟳</span> ${msg}`;
+  el.style.display = "flex";
+}
+function hideLoader() {
+  const el = document.getElementById("db-loader");
+  if (el) el.style.display = "none";
+}
+
+// ── Load all schools from Supabase ─────────
+async function loadSchoolsFromDB() {
+  try {
+    showLoader("Loading schools...");
+    const { data, error } = await db.from("schools").select("*").order("created_at");
+    if (error) throw error;
+    schools = data.map(s => ({
+      id: s.id, name: s.name, code: s.code, city: s.city,
+      username: s.username, password: s.password,
+      color: s.color || "#0077b6", emoji: s.emoji || "🏫",
+      plan: s.plan || "basic"
+    }));
+    hideLoader();
+  } catch (e) {
+    console.error("Error loading schools:", e);
+    // Fallback to demo data if Supabase fails
+    schools = [
+      { id:"demo1", name:"Delhi Public School",  code:"DPS001", city:"New Delhi", username:"admin", password:"dps2026",    color:"#0077b6", emoji:"🏫", plan:"pro" },
+      { id:"demo2", name:"workforschool Demo",    code:"WFS006", city:"Mumbai",    username:"principal", password:"work2026", color:"#0096c7", emoji:"💡", plan:"pro" },
+    ];
+    hideLoader();
+    showToast("Using offline mode — DB unavailable", "var(--amber)");
+  }
+}
+
+// ── Load students for current school ───────
+async function loadStudentsFromDB(schoolId) {
+  if (!schoolId) return;
+  try {
+    showLoader("Loading students...");
+    const { data, error } = await db.from("students")
+      .select("*").eq("school_id", schoolId).order("created_at");
+    if (error) throw error;
+    students = data.map(s => ({
+      id: s.id, name: s.name, roll: s.roll || "", cls: s.class || "",
+      email: s.email || "", parent: s.parent || "", contact: s.contact || "",
+      fee: s.fee_status || "Pending", amount: s.amount || 0,
+      photo: s.photo_url || "", gender: s.gender || "", dob: s.dob || "",
+      address: s.address || "", colors: avatarColors(s.name)
+    }));
+    hideLoader();
+    renderStudents(); renderDashboard(); renderFees();
+  } catch(e) {
+    console.error("Error loading students:", e);
+    hideLoader();
+  }
+}
+
+// ── Save student to Supabase ───────────────
+async function saveStudentToDB(studentData, schoolId) {
+  try {
+    showLoader("Saving student...");
+    const row = {
+      school_id: schoolId, name: studentData.name, roll: studentData.roll,
+      class: studentData.cls, email: studentData.email, parent: studentData.parent,
+      contact: studentData.contact, fee_status: studentData.fee,
+      amount: studentData.amount || 0, photo_url: studentData.photo || "",
+      gender: studentData.gender, dob: studentData.dob || null,
+      address: studentData.address
+    };
+    const { data, error } = await db.from("students").insert([row]).select().single();
+    if (error) throw error;
+    hideLoader();
+    return data.id;
+  } catch(e) {
+    console.error("Error saving student:", e);
+    hideLoader();
+    showToast("Saved locally only (DB error)", "var(--amber)");
+    return null;
+  }
+}
+
+// ── Update student in Supabase ─────────────
+async function updateStudentInDB(studentId, studentData) {
+  try {
+    showLoader("Updating student...");
+    const row = {
+      name: studentData.name, roll: studentData.roll, class: studentData.cls,
+      email: studentData.email, parent: studentData.parent, contact: studentData.contact,
+      fee_status: studentData.fee, amount: studentData.amount || 0,
+      photo_url: studentData.photo || "", gender: studentData.gender,
+      dob: studentData.dob || null, address: studentData.address
+    };
+    const { error } = await db.from("students").update(row).eq("id", studentId);
+    if (error) throw error;
+    hideLoader();
+  } catch(e) {
+    console.error("Error updating student:", e);
+    hideLoader();
+  }
+}
+
+// ── Delete student from Supabase ───────────
+async function deleteStudentFromDB(studentId) {
+  try {
+    const { error } = await db.from("students").delete().eq("id", studentId);
+    if (error) throw error;
+  } catch(e) {
+    console.error("Error deleting student:", e);
+  }
+}
+
+// ── Save notice to Supabase ────────────────
+async function saveNoticeToDB(noticeData, schoolId) {
+  try {
+    const { error } = await db.from("notices").insert([{
+      school_id: schoolId, title: noticeData.title,
+      message: noticeData.msg, category: noticeData.cat,
+      color: noticeData.color || "#0077b6"
+    }]);
+    if (error) throw error;
+  } catch(e) {
+    console.error("Error saving notice:", e);
+  }
+}
+
+// ── Load notices from Supabase ─────────────
+async function loadNoticesFromDB(schoolId) {
+  if (!schoolId) return;
+  try {
+    const { data, error } = await db.from("notices")
+      .select("*").eq("school_id", schoolId).order("created_at", { ascending: false });
+    if (error) throw error;
+    const now = new Date();
+    notices = data.map(n => ({
+      id: n.id, title: n.title, cat: n.category, msg: n.message,
+      date: new Date(n.created_at).toLocaleDateString("en-IN", {day:"numeric",month:"short",year:"numeric"}),
+      color: n.color || "#0077b6", views: n.views || 0
+    }));
+    renderNotices(); renderDashboard();
+  } catch(e) {
+    console.error("Error loading notices:", e);
+  }
+}
+
+// ── Save school registration to Supabase ───
+async function saveSchoolToDB(schoolData) {
+  try {
+    showLoader("Registering school...");
+    const { data, error } = await db.from("schools").insert([{
+      name: schoolData.name, code: schoolData.code, city: schoolData.city,
+      username: schoolData.username, password: schoolData.password,
+      color: schoolData.color, emoji: schoolData.emoji, plan: schoolData.plan,
+      principal: schoolData.principal, phone: schoolData.phone, email: schoolData.email
+    }]).select().single();
+    if (error) throw error;
+    hideLoader();
+    return data;
+  } catch(e) {
+    console.error("Error saving school:", e);
+    hideLoader();
+    return null;
+  }
+}
+
+// ── Save attendance to Supabase ────────────
+async function saveAttendanceToDB(schoolId) {
+  try {
+    showLoader("Saving attendance...");
+    const rows = students
+      .filter(s => attendance[s.id + "_" + TODAY])
+      .map(s => ({
+        school_id: schoolId,
+        student_id: s.id,
+        date: TODAY,
+        status: attendance[s.id + "_" + TODAY]
+      }));
+    if (rows.length) {
+      const { error } = await db.from("attendance")
+        .upsert(rows, { onConflict: "student_id,date" });
+      if (error) throw error;
+    }
+    hideLoader();
+    showToast(`Attendance saved for ${rows.length} students!`);
+  } catch(e) {
+    console.error("Error saving attendance:", e);
+    hideLoader();
+    showToast("Saved locally only", "var(--amber)");
+  }
+}
+
+// ══════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════
-renderDashboard();
-renderStudents();
-renderAttendance();
-renderTimetable();
-renderFees();
-renderNotices();
+// Load schools from Supabase then init
+loadSchoolsFromDB().then(() => {
+  initLogin();
+  switchAuthTab("login");
+  renderDashboard();
+  renderStudents();
+  renderAttendance();
+  renderTimetable();
+  renderFees();
+  renderNotices();
+});
 </script>
 </body>
 </html>
