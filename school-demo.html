@@ -5,11 +5,46 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>EduSphere — Smart School Management</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 const SUPABASE_URL = "https://wsbnlafqcvqizlhaeffb.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzYm5sYWZxY3ZxaXpsaGFlZmZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMTc5MjgsImV4cCI6MjA5MDU5MzkyOH0.aGuDJcRDPCr1GsqEv6QmUsfa-8bcSCl0tBhg4XBd4Wk";
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPABASE_PROXY = "/supabase";
+var db;
+window.addEventListener('DOMContentLoaded', function() {
+  db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+
+  setTimeout(function() {
+    loadSchoolsFromDB().then(function() {
+      initLogin();
+      // ✅ Restore session from localStorage
+      try {
+        const saved = localStorage.getItem("edu_session");
+        if (saved) {
+          const session = JSON.parse(saved);
+          const school = schools.find(s =>
+            s.code === session.school.code
+          );
+          if (school) {
+            console.log("✅ Restoring session for:", school.name);
+            launchApp(school, session.username);
+            return;
+          }
+        }
+      } catch(e) { console.error("Session restore error:", e); }
+      // No saved session — show login
+      switchAuthTab("login");
+      renderDashboard();
+      renderStudents();
+      renderAttendance();
+      renderTimetable();
+      renderFees();
+      renderNotices();
+    });
+  }, 300);
+});
 </script>
 <style>
 /* ── LOGIN PAGE ─────────────────────────────── */
@@ -244,7 +279,6 @@ select.sg-input { cursor:pointer; appearance:none; background-image:url("data:im
 .auth-tabs { display:flex; gap:0; margin-bottom:26px; background:rgba(0,119,182,0.07); border-radius:12px; padding:4px; }
 .auth-tab { flex:1; padding:10px; text-align:center; border-radius:9px; cursor:pointer; font-size:13px; font-weight:600; color:#5a7a96; transition:all 0.2s; }
 .auth-tab.active { background:#fff; color:#0077b6; box-shadow:0 2px 8px rgba(0,119,182,0.12); }
-</style>
 :root {
   --navy:#e8f4fd;--navy2:#dceefb;--teal:#0077b6;--amber:#f5a623;--rose:#e63946;--sky:#0096c7;
   --card:#ffffff;--card2:#f0f7ff;--text:#1a2e44;--muted:#5a7a96;--border:rgba(0,119,182,0.15);
@@ -1266,25 +1300,12 @@ let editingStudentId = null;
 let editingTTKey = null;
 let photoData = "";
 
-let students = [
-  {id:2401,name:"Aarav Kumar",  roll:"01",cls:"10-A",email:"aarav@edu.in",  parent:"Ramesh Kumar", contact:"98765 43210",fee:"Paid",   amount:12000,photo:"",dob:"",gender:"Male",  pemail:"",relation:"Father",address:"",colors:["#00c9a7","#4fc3f7"]},
-  {id:2402,name:"Priya Sharma", roll:"02",cls:"9-B", email:"priya@edu.in",  parent:"Sunita Sharma",contact:"91234 56789",fee:"Paid",   amount:11500,photo:"",dob:"",gender:"Female",pemail:"",relation:"Mother",address:"",colors:["#f5a623","#ff6b6b"]},
-  {id:2403,name:"Rohan Mehta",  roll:"03",cls:"8-A", email:"rohan@edu.in",  parent:"Anita Mehta",  contact:"97890 12345",fee:"Partial",amount:6000, photo:"",dob:"",gender:"Male",  pemail:"",relation:"Mother",address:"",colors:["#a78bfa","#f472b6"]},
-  {id:2404,name:"Neha Kaur",    roll:"04",cls:"10-B",email:"neha@edu.in",   parent:"Gurpreet Kaur",contact:"99887 76655",fee:"Paid",   amount:12000,photo:"",dob:"",gender:"Female",pemail:"",relation:"Father",address:"",colors:["#34d399","#4fc3f7"]},
-  {id:2405,name:"Vivek Patel",  roll:"05",cls:"7-C", email:"vivek@edu.in",  parent:"Dhruv Patel",  contact:"88990 01122",fee:"Overdue",amount:13500,photo:"",dob:"",gender:"Male",  pemail:"",relation:"Father",address:"",colors:["#fb7185","#fbbf24"]},
-  {id:2406,name:"Sneha Agarwal",roll:"06",cls:"9-A", email:"sneha@edu.in",  parent:"Mohan Agarwal",contact:"77665 54433",fee:"Paid",   amount:11500,photo:"",dob:"",gender:"Female",pemail:"",relation:"Father",address:"",colors:["#818cf8","#34d399"]},
-  {id:2407,name:"Karan Rao",    roll:"07",cls:"8-B", email:"karan@edu.in",  parent:"Suresh Rao",   contact:"98001 23456",fee:"Partial",amount:7000, photo:"",dob:"",gender:"Male",  pemail:"",relation:"Father",address:"",colors:["#fbbf24","#f472b6"]},
-];
+let students = []; // Loaded from Supabase on login
 
 let attendance = {}; // { "studentId_date": "present"|"absent" }
-const TODAY = "2026-03-31";
+const TODAY = new Date().toISOString().split('T')[0]; // Dynamic today's date
 
-let notices = [
-  {id:1,title:"Annual Day — April 15",cat:"Event",  msg:"All students arrive by 9AM. Parents invited. Cultural performances by each class.",date:"28 Mar 2026",color:"#ff6b6b",views:215},
-  {id:2,title:"Q4 Exam Schedule Released",cat:"Exam",msg:"Final exams start April 20. Timetable on portal. Students start revision immediately.",date:"25 Mar 2026",color:"#f5a623",views:248},
-  {id:3,title:"Fee Last Date: 31 March",cat:"Finance",msg:"Clear all pending dues before deadline. Late payments attract ₹200/month penalty. Online payment accepted.",date:"20 Mar 2026",color:"#00c9a7",views:180},
-  {id:4,title:"Holiday: Ram Navami — 6 Apr",cat:"Holiday",msg:"School will remain closed on 6th April on account of Ram Navami.",date:"18 Mar 2026",color:"#4fc3f7",views:230},
-];
+let notices = []; // Loaded from Supabase on login
 
 let timetableData = {
   "10-A":{
@@ -1456,12 +1477,17 @@ async function saveStudent(e){
   e.preventDefault();
   const g=id=>document.getElementById(id).value.trim();
   const data={name:g("f-name"),roll:g("f-roll"),cls:document.getElementById("f-class").value,email:g("f-email"),parent:g("f-parent"),contact:g("f-contact"),pemail:g("f-pemail"),relation:document.getElementById("f-relation").value,address:g("f-address"),dob:g("f-dob"),gender:document.getElementById("f-gender").value,fee:document.getElementById("f-fee").value,amount:Number(g("f-amount"))||0,photo:photoData};
+  if(!data.name){showToast("Student name is required","var(--rose)");return;}
   if(editingStudentId!==null){
-    const idx=students.findIndex(s=>s.id===editingStudentId);
+    // UPDATE existing
+    await updateStudentInDB(editingStudentId, data);
+    const idx=students.findIndex(s=>String(s.id)===String(editingStudentId));
     if(idx!==-1)students[idx]={...students[idx],...data,colors:avatarColors(data.name)};
     showToast(data.name+" updated successfully!");
   } else {
-    const newId=2400+students.length+1;
+    // INSERT new — save to Supabase first to get real UUID
+    const dbId = currentSchool ? await saveStudentToDB(data, currentSchool.id) : null;
+    const newId = dbId || (Date.now());
     students.push({id:newId,...data,colors:avatarColors(data.name)});
     showToast(data.name+" added successfully!");
   }
@@ -1713,18 +1739,18 @@ function initLogin(){
     `<div class="login-demo-school" onclick="autoFill(${s.id})"><div class="school-info"><span style="font-size:17px">${s.emoji}</span><div><div class="login-demo-school-name">${s.name}</div><div style="font-size:11px;color:#5a7a96">${s.city}</div></div></div><span class="login-demo-school-code">${s.username} / ${s.password}</span></div>`
   ).join("");
 }
-function autoFill(id){const s=schools.find(s=>s.id===id);if(!s)return;document.getElementById("login-school-select").value=id;document.getElementById("login-username").value=s.username;document.getElementById("login-password").value=s.password;}
-function onSchoolSelect(){const s=schools.find(s=>s.id===Number(document.getElementById("login-school-select").value));if(s){document.getElementById("login-username").value=s.username;document.getElementById("login-password").focus();}}
+function autoFill(id){const s=schools.find(s=>String(s.id)===String(id));if(!s)return;document.getElementById("login-school-select").value=s.id;document.getElementById("login-username").value=s.username;document.getElementById("login-password").value=s.password;}
+function onSchoolSelect(){const val=document.getElementById("login-school-select").value;const s=schools.find(s=>String(s.id)===String(val));if(s){document.getElementById("login-username").value=s.username;document.getElementById("login-password").focus();}}
 function togglePwd(){const i=document.getElementById("login-password"),e=document.getElementById("pwd-eye");i.type=i.type==="password"?"text":"password";e.textContent=i.type==="password"?"👁️":"🙈";}
 function toggleSgPwd(iid,eid){const i=document.getElementById(iid),e=document.getElementById(eid);i.type=i.type==="password"?"text":"password";e.textContent=i.type==="password"?"👁️":"🙈";}
 
 function doLogin(){
-  const schoolId=Number(document.getElementById("login-school-select").value);
+  const schoolId=document.getElementById("login-school-select").value;
   const username=document.getElementById("login-username").value.trim();
   const password=document.getElementById("login-password").value.trim();
   const err=document.getElementById("login-error");
   if(username==="superadmin"&&password==="edusphere2026"){err.classList.remove("show");showAdminPanel();return;}
-  const school=schools.find(s=>s.id===schoolId&&s.username===username&&s.password===password);
+  const school=schools.find(s=>String(s.id)===String(schoolId)&&s.username===username&&s.password===password);
   if(!school){err.classList.add("show");document.getElementById("login-password").value="";return;}
   err.classList.remove("show");
   launchApp(school,username);
@@ -1733,17 +1759,30 @@ function doLogin(){
 function launchApp(school,username){
   ["login-screen","signup-screen"].forEach(id=>{const el=document.getElementById(id);if(el){el.classList.add("hidden");el.classList.remove("show");setTimeout(()=>{el.style.display="none";},500);}});
   currentSchool=school;currentUser=username||school.username;
-  document.title="EduSphere — "+school.name;
-  document.querySelector(".logo-text").textContent=school.name.length>20?school.name.split(" ").slice(0,3).join(" "):school.name;
-  document.querySelector(".logo-icon").textContent=school.emoji;
-  document.querySelector(".logo-icon").style.background="linear-gradient(135deg,"+school.color+","+school.color+"bb)";
-  document.querySelector(".logo-sub").textContent=school.city;
-  document.querySelector(".user-card").querySelector("div>div:first-child").textContent=currentUser;
-  document.querySelector(".user-card").querySelector("div>div:last-child").textContent=school.name;
-  document.documentElement.style.setProperty("--teal",school.color);
-  document.documentElement.style.setProperty("--sky",school.color+"bb");
-  document.getElementById("page-heading").innerHTML="Good morning, <span>"+school.emoji+" "+school.name+"!</span>";
-  // Load this school's data from Supabase
+
+  // ✅ Save session to localStorage so refresh doesn't logout
+  try {
+    localStorage.setItem("edu_session", JSON.stringify({school, username: currentUser}));
+  } catch(e) {}
+
+  const safeName=(school.name||"School");
+  const safeEmoji=(school.emoji||"🏫");
+  const safeColor=(school.color||"#0077b6");
+  const safeCity=(school.city||"");
+  const safeUser=(username||school.username||"admin");
+  document.title="EduSphere - "+safeName;
+  const lt=document.querySelector(".logo-text");
+  if(lt)lt.textContent=safeName.length>20?safeName.split(" ").slice(0,3).join(" "):safeName;
+  const li=document.querySelector(".logo-icon");
+  if(li){li.textContent=safeEmoji;li.style.background="linear-gradient(135deg,"+safeColor+","+safeColor+"bb)";}
+  const ls=document.querySelector(".logo-sub");
+  if(ls)ls.textContent=safeCity;
+  const uc=document.querySelector(".user-card");
+  if(uc){const ds=uc.querySelectorAll("div>div");if(ds[0])ds[0].textContent=safeUser;if(ds[1])ds[1].textContent=safeName;}
+  document.documentElement.style.setProperty("--teal",safeColor);
+  document.documentElement.style.setProperty("--sky",safeColor+"bb");
+  const ph=document.getElementById("page-heading");
+  if(ph)ph.innerHTML="Good morning, <span>"+safeEmoji+" "+safeName+"!</span>";
   loadStudentsFromDB(school.id);
   loadNoticesFromDB(school.id);
   renderDashboard();renderStudents();renderFees();renderNotices();
@@ -1751,12 +1790,15 @@ function launchApp(school,username){
 
 function doLogout(){
   currentSchool=null;currentUser=null;
+  // ✅ Clear saved session
+  try { localStorage.removeItem("edu_session"); } catch(e) {}
   const s=document.getElementById("login-screen");
   s.style.display="flex";s.style.opacity="0";s.classList.remove("hidden");
   setTimeout(()=>{s.style.opacity="1";},10);
   document.getElementById("login-password").value="";
   document.documentElement.style.removeProperty("--teal");
   document.documentElement.style.removeProperty("--sky");
+  students=[];notices=[];
   switchAuthTab("login");
 }
 
@@ -1896,38 +1938,76 @@ function hideLoader() {
 }
 
 // ── Load all schools from Supabase ─────────
+// ── Supabase proxy helpers (via nginx /supabase/ — no CORS!) ──
+const SB = "/supabase/rest/v1";
+const AK = SUPABASE_KEY;
+
+async function sbFetch(table, params) {
+  const url = new URL(SB + "/" + table, window.location.origin);
+  url.searchParams.set("apikey", AK);
+  if (params) Object.entries(params).forEach(([k,v]) => url.searchParams.set(k,v));
+  const r = await fetch(url.toString());
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function sbInsert(table, body) {
+  const r = await fetch(`${SB}/${table}?apikey=${AK}`, {
+    method: "POST",
+    headers: {"Content-Type":"application/json","Prefer":"return=representation"},
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function sbUpdate(table, id, body) {
+  const r = await fetch(`${SB}/${table}?id=eq.${id}&apikey=${AK}`, {
+    method: "PATCH",
+    headers: {"Content-Type":"application/json","Prefer":"return=representation"},
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function sbDelete(table, id) {
+  const r = await fetch(`${SB}/${table}?id=eq.${id}&apikey=${AK}`, {method:"DELETE"});
+  if (!r.ok) throw new Error(await r.text());
+  return true;
+}
+
 async function loadSchoolsFromDB() {
   try {
     showLoader("Loading schools...");
-    const { data, error } = await db.from("schools").select("*").order("created_at");
-    if (error) throw error;
+    const data = await sbFetch("schools", {"select":"*","order":"created_at.asc"});
+    if (!data || data.length === 0) throw new Error("No schools");
     schools = data.map(s => ({
       id: s.id, name: s.name, code: s.code, city: s.city,
       username: s.username, password: s.password,
       color: s.color || "#0077b6", emoji: s.emoji || "🏫",
       plan: s.plan || "basic"
     }));
+    console.log("✅ Loaded", schools.length, "schools");
     hideLoader();
   } catch (e) {
     console.error("Error loading schools:", e);
-    // Fallback to demo data if Supabase fails
     schools = [
       { id:"demo1", name:"Delhi Public School",  code:"DPS001", city:"New Delhi", username:"admin", password:"dps2026",    color:"#0077b6", emoji:"🏫", plan:"pro" },
       { id:"demo2", name:"workforschool Demo",    code:"WFS006", city:"Mumbai",    username:"principal", password:"work2026", color:"#0096c7", emoji:"💡", plan:"pro" },
     ];
     hideLoader();
-    showToast("Using offline mode — DB unavailable", "var(--amber)");
+    showToast("⚠️ Offline mode", "var(--amber)");
   }
 }
 
 // ── Load students for current school ───────
 async function loadStudentsFromDB(schoolId) {
-  if (!schoolId) return;
+  if (!schoolId || schoolId === "demo1" || schoolId === "demo2") return;
   try {
     showLoader("Loading students...");
-    const { data, error } = await db.from("students")
-      .select("*").eq("school_id", schoolId).order("created_at");
-    if (error) throw error;
+    const data = await sbFetch("students", {
+      "select": "*",
+      "school_id": "eq."+schoolId,
+      "order": "created_at.asc"
+    });
     students = data.map(s => ({
       id: s.id, name: s.name, roll: s.roll || "", cls: s.class || "",
       email: s.email || "", parent: s.parent || "", contact: s.contact || "",
@@ -1955,10 +2035,9 @@ async function saveStudentToDB(studentData, schoolId) {
       gender: studentData.gender, dob: studentData.dob || null,
       address: studentData.address
     };
-    const { data, error } = await db.from("students").insert([row]).select().single();
-    if (error) throw error;
+    const data = await sbInsert("students", row);
     hideLoader();
-    return data.id;
+    return Array.isArray(data) ? data[0].id : data.id;
   } catch(e) {
     console.error("Error saving student:", e);
     hideLoader();
@@ -1978,8 +2057,7 @@ async function updateStudentInDB(studentId, studentData) {
       photo_url: studentData.photo || "", gender: studentData.gender,
       dob: studentData.dob || null, address: studentData.address
     };
-    const { error } = await db.from("students").update(row).eq("id", studentId);
-    if (error) throw error;
+    await sbUpdate("students", studentId, row);
     hideLoader();
   } catch(e) {
     console.error("Error updating student:", e);
@@ -1990,8 +2068,7 @@ async function updateStudentInDB(studentId, studentData) {
 // ── Delete student from Supabase ───────────
 async function deleteStudentFromDB(studentId) {
   try {
-    const { error } = await db.from("students").delete().eq("id", studentId);
-    if (error) throw error;
+    await sbDelete("students", studentId);
   } catch(e) {
     console.error("Error deleting student:", e);
   }
@@ -2000,12 +2077,11 @@ async function deleteStudentFromDB(studentId) {
 // ── Save notice to Supabase ────────────────
 async function saveNoticeToDB(noticeData, schoolId) {
   try {
-    const { error } = await db.from("notices").insert([{
+    await sbInsert("notices", {
       school_id: schoolId, title: noticeData.title,
       message: noticeData.msg, category: noticeData.cat,
       color: noticeData.color || "#0077b6"
-    }]);
-    if (error) throw error;
+    });
   } catch(e) {
     console.error("Error saving notice:", e);
   }
@@ -2013,12 +2089,13 @@ async function saveNoticeToDB(noticeData, schoolId) {
 
 // ── Load notices from Supabase ─────────────
 async function loadNoticesFromDB(schoolId) {
-  if (!schoolId) return;
+  if (!schoolId || schoolId === "demo1" || schoolId === "demo2") return;
   try {
-    const { data, error } = await db.from("notices")
-      .select("*").eq("school_id", schoolId).order("created_at", { ascending: false });
-    if (error) throw error;
-    const now = new Date();
+    const data = await sbFetch("notices", {
+      "select": "*",
+      "school_id": "eq."+schoolId,
+      "order": "created_at.desc"
+    });
     notices = data.map(n => ({
       id: n.id, title: n.title, cat: n.category, msg: n.message,
       date: new Date(n.created_at).toLocaleDateString("en-IN", {day:"numeric",month:"short",year:"numeric"}),
@@ -2034,15 +2111,14 @@ async function loadNoticesFromDB(schoolId) {
 async function saveSchoolToDB(schoolData) {
   try {
     showLoader("Registering school...");
-    const { data, error } = await db.from("schools").insert([{
+    const data = await sbInsert("schools", {
       name: schoolData.name, code: schoolData.code, city: schoolData.city,
       username: schoolData.username, password: schoolData.password,
       color: schoolData.color, emoji: schoolData.emoji, plan: schoolData.plan,
       principal: schoolData.principal, phone: schoolData.phone, email: schoolData.email
-    }]).select().single();
-    if (error) throw error;
+    });
     hideLoader();
-    return data;
+    return Array.isArray(data) ? data[0] : data;
   } catch(e) {
     console.error("Error saving school:", e);
     hideLoader();
@@ -2080,16 +2156,6 @@ async function saveAttendanceToDB(schoolId) {
 // INIT
 // ══════════════════════════════════════════
 // Load schools from Supabase then init
-loadSchoolsFromDB().then(() => {
-  initLogin();
-  switchAuthTab("login");
-  renderDashboard();
-  renderStudents();
-  renderAttendance();
-  renderTimetable();
-  renderFees();
-  renderNotices();
-});
 </script>
 </body>
 </html>
