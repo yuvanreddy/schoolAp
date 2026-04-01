@@ -1,0 +1,146 @@
+# ═══════════════════════════════════════════════
+# monitoring/prometheus-values.yaml
+# Helm values for kube-prometheus-stack
+# ═══════════════════════════════════════════════
+
+prometheus:
+  prometheusSpec:
+    retention: 30d
+    retentionSize: "45GB"
+    replicas: 1
+    resources:
+      requests:
+        memory: 512Mi
+        cpu: 200m
+      limits:
+        memory: 2Gi
+        cpu: 1000m
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp2
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 50Gi
+    additionalScrapeConfigs:
+      - job_name: edusphere-school-app
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [production, staging]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: "true"
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            target_label: __address__
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            target_label: app
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests:
+        memory: 128Mi
+        cpu: 50m
+  config:
+    global:
+      slack_api_url: "YOUR_SLACK_WEBHOOK_URL"
+      resolve_timeout: 5m
+    route:
+      group_by: [alertname, namespace, app]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      receiver: slack-notifications
+      routes:
+        - match:
+            severity: critical
+          receiver: slack-critical
+          continue: true
+        - match:
+            severity: warning
+          receiver: slack-notifications
+    receivers:
+      - name: slack-notifications
+        slack_configs:
+          - channel: "#edusphere-alerts"
+            title: "{{ .GroupLabels.alertname }}"
+            text: "{{ range .Alerts }}{{ .Annotations.description }}\n{{ end }}"
+            send_resolved: true
+      - name: slack-critical
+        slack_configs:
+          - channel: "#edusphere-critical"
+            title: "🚨 CRITICAL: {{ .GroupLabels.alertname }}"
+            text: "{{ range .Alerts }}*Description:* {{ .Annotations.description }}\n*Namespace:* {{ .Labels.namespace }}\n{{ end }}"
+            send_resolved: true
+
+grafana:
+  enabled: true
+  replicas: 1
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClassName: gp2
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: true
+    ingressClassName: alb
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-south-1:816069153839:certificate/ba46e859-6426-4c4b-b799-f0b3e6791351"
+      alb.ingress.kubernetes.io/ssl-redirect: "443"
+    hosts:
+      - grafana.workforschool.com
+  grafana.ini:
+    server:
+      root_url: https://grafana.workforschool.com
+    auth.anonymous:
+      enabled: false
+    security:
+      allow_embedding: true
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: edusphere
+          orgId: 1
+          folder: EduSphere
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/edusphere
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://kube-prometheus-stack-prometheus:9090
+          access: proxy
+          isDefault: true
+
+nodeExporter:
+  enabled: true
+
+kubeStateMetrics:
+  enabled: true

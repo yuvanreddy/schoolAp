@@ -1,0 +1,159 @@
+name: 🗑️ Destroy Infrastructure (Manual Only)
+
+# ⚠️  DANGER ZONE — This will destroy AWS infrastructure
+# Only staging can be destroyed via this workflow
+# Production destruction requires manual terraform destroy locally
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to destroy'
+        required: true
+        type: choice
+        options: [staging]        # production intentionally excluded for safety
+      confirm:
+        description: 'Type DESTROY to confirm (case sensitive)'
+        required: true
+
+env:
+  AWS_REGION: ap-south-1
+  AWS_ACCOUNT_ID: "816069153839"
+  TF_STATE_BUCKET: edusphere-tf-state-816069153839
+  TF_LOCK_TABLE: edusphere-tf-locks
+
+jobs:
+  # ─────────────────────────────────────────
+  # Safety Gate — must type DESTROY exactly
+  # ─────────────────────────────────────────
+  safety-check:
+    name: 🛑 Safety Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate confirmation word
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "DESTROY" ]; then
+            echo "❌ You must type exactly DESTROY to proceed"
+            exit 1
+          fi
+          echo "✅ Confirmation accepted"
+
+      - name: Log destruction request
+        run: |
+          echo "⚠️  DESTRUCTION REQUESTED"
+          echo "Environment : ${{ github.event.inputs.environment }}"
+          echo "Requested by: ${{ github.actor }}"
+          echo "Time        : $(date -u)"
+
+  # ─────────────────────────────────────────
+  # Destroy Kubernetes resources first
+  # ─────────────────────────────────────────
+  destroy-k8s:
+    name: ☸️ Remove K8s Resources
+    runs-on: ubuntu-latest
+    needs: safety-check
+    environment: staging
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.29.0
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --name edusphere-eks \
+            --region ${{ env.AWS_REGION }}
+        continue-on-error: true
+
+      - name: Delete K8s namespaces
+        run: |
+          kubectl delete namespace staging    --ignore-not-found=true
+          kubectl delete namespace monitoring --ignore-not-found=true
+          echo "✅ K8s resources removed"
+        continue-on-error: true
+
+  # ─────────────────────────────────────────
+  # Destroy AWS Infrastructure via Terraform
+  # ─────────────────────────────────────────
+  destroy-infra:
+    name: 💣 Terraform Destroy
+    runs-on: ubuntu-latest
+    needs: destroy-k8s
+    environment: staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+
+      - name: Terraform Init
+        working-directory: terraform/
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" \
+            -backend-config="key=edusphere/staging/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ env.TF_LOCK_TABLE }}"
+
+      - name: Terraform Plan Destroy
+        working-directory: terraform/
+        run: |
+          terraform plan -destroy \
+            -var="environment=staging" \
+            -var="app_image_tag=latest" \
+            -out=destroy-plan
+        env:
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+
+      - name: Terraform Destroy
+        working-directory: terraform/
+        run: terraform apply -auto-approve destroy-plan
+        env:
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+
+      - name: Confirm destruction complete
+        run: |
+          echo "✅ Staging infrastructure destroyed"
+          echo "Destroyed by : ${{ github.actor }}"
+          echo "Time         : $(date -u)"
+
+  # ─────────────────────────────────────────
+  # Notify team on Slack
+  # ─────────────────────────────────────────
+  notify:
+    name: 📢 Notify Team
+    runs-on: ubuntu-latest
+    needs: destroy-infra
+    if: always()
+
+    steps:
+      - name: Notify Slack
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "💣 *EduSphere Staging Infrastructure DESTROYED*\n*Environment:* staging\n*Destroyed by:* ${{ github.actor }}\n*Time:* $(date -u)"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true

@@ -1,0 +1,156 @@
+# ═══════════════════════════════════════════════
+# monitoring/prometheus-rules.yaml
+# Custom PrometheusRule for EduSphere
+# ═══════════════════════════════════════════════
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: edusphere-alerts
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kube-prometheus-stack
+spec:
+  groups:
+    # ── Application Health ─────────────────────
+    - name: edusphere.app.health
+      interval: 30s
+      rules:
+        - alert: EduSphereAppDown
+          expr: up{job="edusphere-school-app"} == 0
+          for: 1m
+          labels:
+            severity: critical
+            team: sre
+          annotations:
+            summary: "EduSphere app is down"
+            description: "EduSphere school-demo pod {{ $labels.pod }} in {{ $labels.namespace }} has been down for more than 1 minute."
+
+        - alert: EduSphereHighErrorRate
+          expr: |
+            rate(http_requests_total{job="edusphere-school-app", status=~"5.."}[5m])
+            / rate(http_requests_total{job="edusphere-school-app"}[5m]) > 0.05
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "High HTTP error rate (>5%)"
+            description: "EduSphere is returning >5% HTTP 5xx errors. Current rate: {{ $value | humanizePercentage }}."
+
+        - alert: EduSphereHighLatency
+          expr: |
+            histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="edusphere-school-app"}[5m])) > 2
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High response latency (P95 > 2s)"
+            description: "EduSphere P95 latency is {{ $value }}s — above 2s threshold."
+
+        - alert: EduSphereNoTraffic
+          expr: rate(http_requests_total{job="edusphere-school-app"}[10m]) == 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "EduSphere receiving no traffic"
+            description: "No HTTP requests received in the last 10 minutes. Possible connectivity issue."
+
+    # ── Kubernetes Pod Health ──────────────────
+    - name: edusphere.k8s.pods
+      rules:
+        - alert: EduSpherePodCrashLooping
+          expr: |
+            rate(kube_pod_container_status_restarts_total{
+              namespace=~"production|staging",
+              pod=~"school-demo.*"
+            }[15m]) * 60 * 15 > 3
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Pod {{ $labels.pod }} is crash-looping"
+            description: "Pod {{ $labels.pod }} has restarted more than 3 times in 15 minutes."
+
+        - alert: EduSpherePodNotReady
+          expr: |
+            kube_pod_status_ready{
+              condition="true",
+              namespace=~"production|staging",
+              pod=~"school-demo.*"
+            } == 0
+          for: 3m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.pod }} not ready"
+            description: "Pod {{ $labels.pod }} has been in a not-ready state for 3+ minutes."
+
+        - alert: EduSphereDeploymentReplicasMismatch
+          expr: |
+            kube_deployment_spec_replicas{deployment="school-demo", namespace="production"}
+            != kube_deployment_status_available_replicas{deployment="school-demo", namespace="production"}
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Deployment replicas mismatch in production"
+            description: "Expected {{ $value }} replicas but only {{ $value }} available."
+
+    # ── Resource Usage ─────────────────────────
+    - name: edusphere.resources
+      rules:
+        - alert: EduSphereHighCPU
+          expr: |
+            rate(container_cpu_usage_seconds_total{
+              namespace=~"production|staging",
+              container="school-demo"
+            }[5m]) > 0.8
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High CPU usage on school-demo"
+            description: "Container CPU usage is at {{ $value | humanizePercentage }} for 10+ minutes."
+
+        - alert: EduSphereHighMemory
+          expr: |
+            container_memory_working_set_bytes{
+              namespace=~"production|staging",
+              container="school-demo"
+            } / container_spec_memory_limit_bytes{
+              namespace=~"production|staging",
+              container="school-demo"
+            } > 0.85
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High memory usage on school-demo"
+            description: "Memory usage is at {{ $value | humanizePercentage }} of limit."
+
+    # ── Infrastructure ─────────────────────────
+    - name: edusphere.infrastructure
+      rules:
+        - alert: EduSphereNodeDiskPressure
+          expr: kube_node_status_condition{condition="DiskPressure", status="true"} == 1
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Node {{ $labels.node }} has disk pressure"
+            description: "Kubernetes node {{ $labels.node }} is under disk pressure."
+
+        - alert: EduSphereHPAMaxed
+          expr: |
+            kube_horizontalpodautoscaler_status_current_replicas{
+              horizontalpodautoscaler="school-demo-hpa"
+            } == kube_horizontalpodautoscaler_spec_max_replicas{
+              horizontalpodautoscaler="school-demo-hpa"
+            }
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "HPA at maximum replicas"
+            description: "school-demo HPA has been at max replicas for 10 minutes. Consider scaling up the node group."

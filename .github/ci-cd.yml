@@ -1,0 +1,528 @@
+name: 🏫 EduSphere — CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options: [staging, production]
+      skip_tests:
+        description: 'Skip tests (emergency deploy only)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  AWS_REGION: ap-south-1                        # Mumbai — confirmed
+  AWS_ACCOUNT_ID: "816069153839"                # Your AWS account ID
+  ECR_REPOSITORY: edusphere-school-app
+  EKS_CLUSTER_NAME: edusphere-eks
+  APP_NAME: school-demo
+  DOMAIN: workforschool.com                     # Your GoDaddy domain
+  GRAFANA_DOMAIN: grafana.workforschool.com     # Grafana subdomain
+  TF_STATE_BUCKET: edusphere-tf-state-816069153839   # Your S3 state bucket
+  TF_LOCK_TABLE: edusphere-tf-locks             # Your DynamoDB lock table
+  TERRAFORM_VERSION: 1.7.0
+  KUBECTL_VERSION: 1.29.0
+
+jobs:
+  # ─────────────────────────────────────────
+  # JOB 1: Code Quality & Security Scan
+  # ─────────────────────────────────────────
+  lint-and-security:
+    name: 🔍 Lint & Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run ESLint
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run Prettier check
+        run: npm run format:check
+
+      - name: Run Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: '.'
+          format: table
+          exit-code: '1'
+          severity: CRITICAL,HIGH
+
+      - name: OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'EduSphere'
+          path: '.'
+          format: 'HTML'
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-report
+          path: reports/
+
+  # ─────────────────────────────────────────
+  # JOB 2: Unit & Integration Tests
+  # ─────────────────────────────────────────
+  test:
+    name: 🧪 Run Tests
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.skip_tests }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:unit -- --coverage
+
+      - name: Run integration tests
+        run: npm run test:integration
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          flags: unittests
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: test-results/
+
+  # ─────────────────────────────────────────
+  # JOB 3: Build & Push Docker Image to ECR
+  # ─────────────────────────────────────────
+  build-and-push:
+    name: 🐳 Build & Push to ECR
+    runs-on: ubuntu-latest
+    needs: [lint-and-security, test]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+      short-sha: ${{ steps.vars.outputs.short-sha }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set short SHA
+        id: vars
+        run: echo "short-sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
+          tags: |
+            type=sha,prefix=sha-
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            APP_VERSION=${{ steps.vars.outputs.short-sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+
+      - name: Scan ECR image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:sha-${{ steps.vars.outputs.short-sha }}
+          format: sarif
+          output: trivy-image.sarif
+          severity: CRITICAL,HIGH
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-image.sarif
+
+  # ─────────────────────────────────────────
+  # JOB 4: Terraform — Infrastructure
+  # ─────────────────────────────────────────
+  terraform:
+    name: 🏗️ Terraform Infrastructure
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    defaults:
+      run:
+        working-directory: terraform/
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" \
+            -backend-config="key=edusphere/${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ env.TF_LOCK_TABLE }}"
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan \
+            -var="environment=${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}" \
+            -var="app_image_tag=${{ needs.build-and-push.outputs.short-sha }}" \
+            -out=tfplan
+        env:
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+
+      - name: Show Terraform Plan
+        run: terraform show -no-color tfplan
+
+      - name: Comment Plan on PR
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const output = `#### Terraform Plan 📝
+            \`\`\`
+            ${{ steps.plan.outputs.stdout }}
+            \`\`\``;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+        run: terraform apply -auto-approve tfplan
+
+      - name: Export Terraform Outputs
+        id: tf-outputs
+        run: |
+          echo "eks-endpoint=$(terraform output -raw eks_endpoint)" >> $GITHUB_OUTPUT
+          echo "rds-endpoint=$(terraform output -raw rds_endpoint)" >> $GITHUB_OUTPUT
+          echo "alb-dns=$(terraform output -raw alb_dns_name)" >> $GITHUB_OUTPUT
+
+  # ─────────────────────────────────────────
+  # JOB 5: Deploy to Kubernetes (EKS)
+  # ─────────────────────────────────────────
+  deploy-k8s:
+    name: ☸️ Deploy to EKS
+    runs-on: ubuntu-latest
+    needs: [build-and-push, terraform]
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v${{ env.KUBECTL_VERSION }}
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: '3.14.0'
+
+      - name: Update kubeconfig for EKS
+        run: |
+          aws eks update-kubeconfig \
+            --name ${{ env.EKS_CLUSTER_NAME }} \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set environment variables
+        id: env
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "namespace=production" >> $GITHUB_OUTPUT
+            echo "replicas=3" >> $GITHUB_OUTPUT
+          else
+            echo "namespace=staging" >> $GITHUB_OUTPUT
+            echo "replicas=1" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create/Update Kubernetes namespace
+        run: |
+          kubectl create namespace ${{ steps.env.outputs.namespace }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl label namespace ${{ steps.env.outputs.namespace }} \
+            app=edusphere environment=${{ steps.env.outputs.namespace }} --overwrite
+
+      - name: Create image pull secret
+        run: |
+          kubectl create secret docker-registry ecr-secret \
+            --docker-server=${{ steps.login-ecr.outputs.registry }} \
+            --docker-username=AWS \
+            --docker-password=$(aws ecr get-login-password --region ${{ env.AWS_REGION }}) \
+            --namespace=${{ steps.env.outputs.namespace }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Inject real domain and ACM cert into manifests
+        run: |
+          IMAGE="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:sha-${{ needs.build-and-push.outputs.short-sha }}"
+          sed -i "s|IMAGE_PLACEHOLDER|$IMAGE|g" k8s/deployment.yaml
+          sed -i "s|NAMESPACE_PLACEHOLDER|${{ steps.env.outputs.namespace }}|g" k8s/*.yaml
+          sed -i "s|REPLICAS_PLACEHOLDER|${{ steps.env.outputs.replicas }}|g" k8s/deployment.yaml
+          sed -i "s|DOMAIN_PLACEHOLDER|${{ env.DOMAIN }}|g" k8s/deployment.yaml
+          sed -i "s|CERT_ARN_PLACEHOLDER|${{ secrets.ACM_CERTIFICATE_ARN }}|g" k8s/deployment.yaml
+          sed -i "s|ACCOUNT_ID|${{ env.AWS_ACCOUNT_ID }}|g" k8s/deployment.yaml
+
+      - name: Apply Kubernetes manifests
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/configmap.yaml  -n ${{ steps.env.outputs.namespace }}
+          kubectl apply -f k8s/secrets.yaml    -n ${{ steps.env.outputs.namespace }}
+          kubectl apply -f k8s/deployment.yaml -n ${{ steps.env.outputs.namespace }}
+          kubectl apply -f k8s/service.yaml    -n ${{ steps.env.outputs.namespace }}
+          kubectl apply -f k8s/ingress.yaml    -n ${{ steps.env.outputs.namespace }}
+          kubectl apply -f k8s/hpa.yaml        -n ${{ steps.env.outputs.namespace }}
+
+      - name: Wait for rollout to complete
+        run: |
+          kubectl rollout status deployment/${{ env.APP_NAME }} \
+            -n ${{ steps.env.outputs.namespace }} \
+            --timeout=300s
+
+      - name: Verify deployment health
+        run: |
+          kubectl get pods -n ${{ steps.env.outputs.namespace }} -l app=${{ env.APP_NAME }}
+          kubectl get svc  -n ${{ steps.env.outputs.namespace }}
+          kubectl get ingress -n ${{ steps.env.outputs.namespace }}
+
+      - name: Run smoke tests
+        run: |
+          ALB_URL=$(kubectl get ingress ${{ env.APP_NAME }} \
+            -n ${{ steps.env.outputs.namespace }} \
+            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo "App URL: http://$ALB_URL"
+          for i in {1..10}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://$ALB_URL/health)
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Smoke test passed (attempt $i)"
+              exit 0
+            fi
+            echo "⏳ Attempt $i failed (status: $STATUS), retrying..."
+            sleep 15
+          done
+          echo "❌ Smoke tests failed after 10 attempts"
+          exit 1
+
+  # ─────────────────────────────────────────
+  # JOB 6: Deploy Prometheus & Grafana
+  # ─────────────────────────────────────────
+  deploy-monitoring:
+    name: 📊 Deploy Monitoring Stack
+    runs-on: ubuntu-latest
+    needs: deploy-k8s
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --name ${{ env.EKS_CLUSTER_NAME }} \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: '3.14.0'
+
+      - name: Add Helm repositories
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo add grafana https://grafana.github.io/helm-charts
+          helm repo update
+
+      - name: Create monitoring namespace
+        run: |
+          kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy kube-prometheus-stack
+        run: |
+          helm upgrade --install kube-prometheus-stack \
+            prometheus-community/kube-prometheus-stack \
+            --namespace monitoring \
+            --values monitoring/prometheus-values.yaml \
+            --set grafana.adminPassword=${{ secrets.GRAFANA_ADMIN_PASSWORD }} \
+            --set grafana.ingress.hosts[0]=${{ env.GRAFANA_DOMAIN }} \
+            --set prometheus.prometheusSpec.retention=30d \
+            --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage=50Gi \
+            --timeout 10m \
+            --wait
+
+      - name: Apply EduSphere custom Prometheus rules
+        run: |
+          kubectl apply -f monitoring/prometheus-rules.yaml -n monitoring
+
+      - name: Apply Grafana dashboards
+        run: |
+          kubectl apply -f monitoring/grafana-dashboards.yaml -n monitoring
+
+      - name: Apply ServiceMonitor for school app
+        run: |
+          kubectl apply -f monitoring/service-monitor.yaml -n production
+
+      - name: Verify monitoring stack
+        run: |
+          kubectl get pods -n monitoring
+          kubectl get svc  -n monitoring
+          echo "✅ Prometheus & Grafana deployed successfully"
+
+  # ─────────────────────────────────────────
+  # JOB 7: Rollback on Failure
+  # ─────────────────────────────────────────
+  rollback:
+    name: 🔄 Rollback on Failure
+    runs-on: ubuntu-latest
+    needs: [deploy-k8s, deploy-monitoring]
+    if: failure() && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --name ${{ env.EKS_CLUSTER_NAME }} \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Rollback Kubernetes deployment
+        run: |
+          kubectl rollout undo deployment/${{ env.APP_NAME }} -n production
+          kubectl rollout status deployment/${{ env.APP_NAME }} -n production --timeout=120s
+          echo "⚠️ Rollback completed to previous version"
+
+      - name: Notify Slack on Rollback
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "🚨 *EduSphere Deployment FAILED & Rolled Back*\n*Branch:* ${{ github.ref_name }}\n*Commit:* ${{ github.sha }}\n*Author:* ${{ github.actor }}\n*Action URL:* ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # ─────────────────────────────────────────
+  # JOB 8: Notify Success
+  # ─────────────────────────────────────────
+  notify-success:
+    name: 🎉 Notify Success
+    runs-on: ubuntu-latest
+    needs: [deploy-k8s, deploy-monitoring]
+    if: success()
+
+    steps:
+      - name: Notify Slack on Success
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "✅ *EduSphere Deployment Successful!*\n*Environment:* ${{ github.ref == 'refs/heads/main' && 'Production' || 'Staging' }}\n*Version:* ${{ needs.build-and-push.outputs.short-sha }}\n*Branch:* ${{ github.ref_name }}\n*Author:* ${{ github.actor }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

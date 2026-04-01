@@ -1,0 +1,19 @@
+﻿# Terraform
+terraform/.terraform/
+terraform/tfplan
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/.terraform.lock.hcl
+backend.hcl
+
+# Secrets
+*.env
+.env.*
+alb-iam-policy.json
+
+# Docker
+.dockerignore
+
+# OS
+.DS_Store
+Thumbs.db

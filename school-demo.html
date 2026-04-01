@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EduSphere — Smart School Management</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --navy:#e8f4fd;--navy2:#dceefb;--teal:#0077b6;--amber:#f5a623;--rose:#e63946;--sky:#0096c7;
+  --card:#ffffff;--card2:#f0f7ff;--text:#1a2e44;--muted:#5a7a96;--border:rgba(0,119,182,0.15);
+  --font-head:'Playfair Display',serif;--font-body:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font-body);background:#dff0fb;color:var(--text);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;z-index:0;
+  background:radial-gradient(ellipse at 10% 20%,rgba(0,150,199,0.08) 0%,transparent 50%),
+             radial-gradient(ellipse at 90% 80%,rgba(0,119,182,0.06) 0%,transparent 50%);pointer-events:none;}
+
+/* SIDEBAR */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;background:#ffffff;border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100;box-shadow:4px 0 20px rgba(0,119,182,0.1);}
+.logo{padding:24px 20px 18px;border-bottom:1px solid var(--border);}
+.logo-mark{display:flex;align-items:center;gap:10px;}
+.logo-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--teal),var(--sky));display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:#fff;}
+.logo-text{font-family:var(--font-head);font-size:19px;color:var(--text);}
+.logo-sub{font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
+.nav{flex:1;padding:14px 10px;display:flex;flex-direction:column;gap:3px;}
+.nav-section{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:10px 12px 5px;}
+.nav-item{display:flex;align-items:center;gap:11px;padding:9px 13px;border-radius:10px;cursor:pointer;transition:all 0.2s;font-size:13.5px;font-weight:500;color:var(--muted);border:1px solid transparent;}
+.nav-item:hover{background:rgba(0,119,182,0.07);color:var(--text);}
+.nav-item.active{background:rgba(0,119,182,0.1);color:var(--teal);border-color:var(--border);}
+.nav-item .icon{font-size:17px;width:20px;text-align:center;}
+.nav-badge{margin-left:auto;background:var(--rose);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;}
+.sidebar-bottom{padding:14px 10px;border-top:1px solid var(--border);}
+.user-card{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(0,119,182,0.05);}
+.user-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--amber),var(--rose));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;}
+
+/* MAIN */
+.main{margin-left:240px;min-height:100vh;position:relative;z-index:1;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 32px;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.9);backdrop-filter:blur(10px);position:sticky;top:0;z-index:50;}
+.topbar-title{font-family:var(--font-head);font-size:24px;color:var(--text);}
+.topbar-title span{color:var(--teal);}
+.topbar-right{display:flex;align-items:center;gap:12px;}
+.topbar-search{background:#f0f7ff;border:1px solid var(--border);border-radius:10px;padding:8px 14px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:text;width:200px;}
+.topbar-bell{width:36px;height:36px;border-radius:10px;background:#f0f7ff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;position:relative;}
+.bell-dot{position:absolute;top:7px;right:8px;width:7px;height:7px;background:var(--rose);border-radius:50%;border:2px solid #fff;}
+.btn{padding:9px 18px;border-radius:10px;border:none;cursor:pointer;font-family:var(--font-body);font-size:13px;font-weight:600;transition:all 0.2s;display:inline-flex;align-items:center;gap:7px;}
+.btn-primary{background:linear-gradient(135deg,var(--teal),var(--sky));color:#fff;}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,119,182,0.35);}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text);}
+.btn-outline:hover{border-color:var(--teal);color:var(--teal);}
+.btn-sm{padding:6px 14px;font-size:12px;}
+.btn-danger{background:rgba(230,57,70,0.1);color:var(--rose);border:1px solid rgba(230,57,70,0.3);}
+
+/* CONTENT */
+.content{padding:28px 32px;}
+.page{display:none;animation:fadeIn 0.3s ease;}
+.page.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+.stat-card{background:#ffffff;border:1px solid var(--border);border-radius:16px;padding:20px 22px;position:relative;overflow:hidden;transition:transform 0.2s,box-shadow 0.2s;cursor:pointer;box-shadow:0 2px 12px rgba(0,119,182,0.06);}
+.stat-card:hover{transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,0.3);}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:16px 16px 0 0;}
+.stat-card.teal::before{background:linear-gradient(90deg,var(--teal),var(--sky));}
+.stat-card.amber::before{background:linear-gradient(90deg,var(--amber),#ff9f00);}
+.stat-card.rose::before{background:linear-gradient(90deg,var(--rose),#ff9a9e);}
+.stat-card.sky::before{background:linear-gradient(90deg,var(--sky),#a8edea);}
+.stat-icon{font-size:26px;margin-bottom:10px;}
+.stat-value{font-family:var(--font-head);font-size:30px;font-weight:900;}
+.stat-label{font-size:12px;color:var(--muted);margin-top:3px;}
+.stat-change{font-size:11px;margin-top:6px;}
+.stat-change.up{color:var(--teal);}
+.stat-change.down{color:var(--rose);}
+
+/* SECTION */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.section-title{font-family:var(--font-head);font-size:20px;}
+
+/* TABLE */
+.table-wrap{background:#ffffff;border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,119,182,0.06);}
+table{width:100%;border-collapse:collapse;}
+thead tr{border-bottom:1px solid var(--border);background:#f7fbff;}
+thead th{padding:13px 18px;text-align:left;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600;}
+tbody tr{border-bottom:1px solid rgba(0,119,182,0.07);transition:background 0.15s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:rgba(0,119,182,0.04);}
+tbody td{padding:13px 18px;font-size:13.5px;color:var(--text);}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.badge-green{background:rgba(0,119,182,0.1);color:#0077b6;}
+.badge-amber{background:rgba(245,166,35,0.15);color:#c07000;}
+.badge-rose{background:rgba(230,57,70,0.1);color:var(--rose);}
+.badge-sky{background:rgba(0,150,199,0.1);color:var(--sky);}
+.badge-purple{background:rgba(108,99,255,0.1);color:#6c63ff;}
+.avatar-sm{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;}
+.flex-center{display:flex;align-items:center;gap:10px;}
+.action-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:4px 11px;border-radius:7px;cursor:pointer;font-size:11px;font-family:var(--font-body);transition:all 0.15s;}
+.action-btn:hover{border-color:var(--teal);color:var(--teal);}
+.action-btn.danger:hover{border-color:var(--rose);color:var(--rose);}
+
+/* CARD */
+.card{background:#ffffff;border:1px solid var(--border);border-radius:16px;padding:22px;box-shadow:0 2px 12px rgba(0,119,182,0.06);}
+.card-title{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:14px;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px;}
+.three-col{display:grid;grid-template-columns:2fr 1fr;gap:18px;margin-top:18px;}
+
+/* TABS */
+.tabs{display:flex;gap:4px;background:#f0f7ff;border:1px solid var(--border);border-radius:12px;padding:4px;width:fit-content;margin-bottom:18px;}
+.tab{padding:7px 18px;border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.2s;color:var(--muted);}
+.tab.active{background:linear-gradient(135deg,var(--teal),var(--sky));color:#fff;font-weight:700;}
+
+/* QUICK ACTIONS */
+.quick-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.qa-btn{background:#ffffff;border:1px solid var(--border);border-radius:14px;padding:18px 14px;text-align:center;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px rgba(0,119,182,0.06);}
+.qa-btn:hover{border-color:var(--teal);background:rgba(0,119,182,0.07);transform:translateY(-2px);}
+.qa-icon{font-size:24px;margin-bottom:7px;}
+.qa-label{font-size:12px;font-weight:600;color:var(--muted);}
+
+/* ATTENDANCE CALENDAR */
+.att-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+.att-day-label{font-size:10px;color:var(--muted);text-align:center;padding-bottom:4px;}
+.att-cell{aspect-ratio:1;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s;position:relative;}
+.att-cell:hover{transform:scale(1.1);}
+.att-present{background:rgba(0,119,182,0.15);color:#0077b6;}
+.att-absent{background:rgba(255,107,107,0.2);color:var(--rose);}
+.att-holiday{background:rgba(0,0,0,0.05);color:var(--muted);cursor:default;}
+.att-today{outline:2px solid var(--teal);outline-offset:2px;}
+.att-unmarked{background:rgba(0,0,0,0.05);color:var(--muted);}
+
+/* CLASS LIST */
+.class-item{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(255,255,255,0.05);}
+.class-item:last-child{border-bottom:none;}
+.class-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+
+/* TIMETABLE */
+.tt-grid{display:grid;grid-template-columns:70px repeat(6,1fr);gap:5px;}
+.tt-head{font-size:11px;font-weight:600;color:var(--muted);text-align:center;padding:7px 4px;text-transform:uppercase;letter-spacing:1px;}
+.tt-time{font-size:10px;color:var(--muted);display:flex;align-items:center;justify-content:flex-end;padding-right:8px;}
+.tt-slot{border-radius:9px;padding:7px 8px;font-size:11px;font-weight:500;text-align:center;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;transition:all 0.15s;}
+.tt-slot:hover{transform:scale(1.03);}
+.tt-slot .subj{font-weight:700;font-size:11px;}
+.tt-slot .tchr{font-size:10px;opacity:0.75;}
+.tt-empty{border-radius:9px;background:rgba(0,119,182,0.04);min-height:52px;}
+.tt-math{background:rgba(0,119,182,0.12);color:#0077b6;}
+.tt-sci{background:rgba(79,195,247,0.15);color:var(--sky);}
+.tt-eng{background:rgba(245,166,35,0.15);color:var(--amber);}
+.tt-hist{background:rgba(255,107,107,0.15);color:var(--rose);}
+.tt-pe{background:rgba(167,139,250,0.15);color:#a78bfa;}
+.tt-art{background:rgba(52,211,153,0.15);color:#34d399;}
+.tt-break{background:rgba(0,119,182,0.06);color:var(--muted);}
+
+/* FEE */
+.fee-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-bottom:18px;}
+.fee-box{background:#f0f7ff;border-radius:12px;padding:15px 18px;border:1px solid var(--border);}
+.fee-box-label{font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;}
+.fee-box-value{font-family:var(--font-head);font-size:22px;}
+.progress-bar-wrap{margin-top:16px;}
+.progress-label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:7px;}
+.progress-bar{height:8px;background:rgba(0,119,182,0.1);border-radius:20px;overflow:hidden;}
+.progress-fill{height:100%;border-radius:20px;background:linear-gradient(90deg,var(--teal),var(--sky));transition:width 1s ease;}
+
+/* NOTICE */
+.notice-item{padding:14px 0;border-bottom:1px solid rgba(0,119,182,0.1);display:flex;gap:13px;}
+.notice-item:last-child{border-bottom:none;}
+.notice-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0;}
+.notice-title{font-size:13px;font-weight:600;margin-bottom:3px;}
+.notice-meta{font-size:11px;color:var(--muted);}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:#ffffff;border:1px solid var(--border);border-radius:20px;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,0.15);width:600px;max-width:96vw;max-height:90vh;overflow-y:auto;animation:slideUp 0.25s ease;}
+.modal-sm{width:420px;}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;}
+.modal-title{font-family:var(--font-head);font-size:20px;}
+.modal-close{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;}
+.modal-close:hover{background:rgba(255,107,107,0.1);color:var(--rose);border-color:var(--rose);}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.form-group{display:flex;flex-direction:column;gap:5px;}
+.form-group.full{grid-column:1/-1;}
+.form-label{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:0.5px;text-transform:uppercase;}
+.form-input{background:#f0f7ff;border:1px solid var(--border);border-radius:10px;padding:9px 13px;font-size:13px;color:var(--text);font-family:var(--font-body);outline:none;transition:border 0.2s;width:100%;}
+.form-input:focus{border-color:var(--teal);}
+.form-input::placeholder{color:var(--muted);}
+select.form-input option{background:#ffffff;}
+textarea.form-input{resize:vertical;min-height:80px;}
+.form-divider{grid-column:1/-1;border:none;border-top:1px solid var(--border);margin:3px 0;}
+.form-section-title{grid-column:1/-1;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal);font-weight:600;}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;padding-top:18px;border-top:1px solid var(--border);}
+.photo-upload{border:2px dashed var(--border);border-radius:12px;padding:16px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;}
+.photo-upload:hover{border-color:var(--teal);background:rgba(0,201,167,0.05);}
+.photo-upload input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.photo-preview{width:60px;height:60px;border-radius:50%;object-fit:cover;margin:0 auto 6px;display:block;}
+
+/* TOAST */
+.toast{position:fixed;bottom:28px;right:28px;z-index:999;background:#ffffff;border:1px solid var(--teal);box-shadow:0 8px 30px rgba(0,119,182,0.2);border-radius:12px;padding:13px 18px;display:flex;align-items:center;gap:10px;font-size:13px;transform:translateY(100px);opacity:0;transition:all 0.3s ease;pointer-events:none;max-width:320px;}
+.toast.show{transform:translateY(0);opacity:1;}
+
+/* ATTENDANCE MARK */
+.att-student-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(0,119,182,0.08);}
+.att-student-row:last-child{border-bottom:none;}
+.att-toggle{display:flex;gap:6px;}
+.att-toggle-btn{padding:4px 14px;border-radius:20px;border:1px solid var(--border);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-body);transition:all 0.15s;background:none;color:var(--muted);}
+.att-toggle-btn.present{background:rgba(0,119,182,0.15);color:#0077b6;border-color:#0077b6;}
+.att-toggle-btn.absent{background:rgba(255,107,107,0.2);color:var(--rose);border-color:var(--rose);}
+
+/* SEARCH */
+.search-input{background:#f0f7ff;border:1px solid var(--border);border-radius:10px;padding:9px 14px;font-size:13px;color:var(--text);font-family:var(--font-body);outline:none;width:220px;transition:border 0.2s;}
+.search-input:focus{border-color:var(--teal);}
+.search-input::placeholder{color:var(--muted);}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-mark">
+      <div class="logo-icon">E</div>
+      <div><div class="logo-text">EduSphere</div><div class="logo-sub">School Management</div></div>
+    </div>
+  </div>
+  <nav class="nav">
+    <div class="nav-section">Main</div>
+    <div class="nav-item active" onclick="showPage('dashboard',this)"><span class="icon">🏠</span>Dashboard</div>
+    <div class="nav-section">Academics</div>
+    <div class="nav-item" onclick="showPage('students',this)"><span class="icon">👨‍🎓</span>Students<span class="nav-badge" id="nav-count">7</span></div>
+    <div class="nav-item" onclick="showPage('attendance',this)"><span class="icon">📋</span>Attendance</div>
+    <div class="nav-item" onclick="showPage('timetable',this)"><span class="icon">🗓️</span>Timetable</div>
+    <div class="nav-section">Finance</div>
+    <div class="nav-item" onclick="showPage('fees',this)"><span class="icon">💳</span>Fees &amp; Payments<span class="nav-badge" style="background:var(--amber);color:var(--navy)" id="fee-badge">3</span></div>
+    <div class="nav-section">Communication</div>
+    <div class="nav-item" onclick="showPage('notices',this)"><span class="icon">📢</span>Notice Board</div>
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="user-card">
+      <div class="user-avatar">AK</div>
+      <div><div style="font-size:13px;font-weight:600">Admin Kumar</div><div style="font-size:11px;color:var(--muted)">Principal</div></div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="page-heading">Good morning, <span>Principal! 👋</span></div>
+    <div class="topbar-right">
+      <input class="search-input" id="global-search" placeholder="🔍 Search students..." oninput="globalSearch(this.value)" onfocus="showPage('students',document.querySelectorAll('.nav-item')[3])"/>
+      <div class="topbar-bell">🔔<span class="bell-dot"></span></div>
+      <button class="btn btn-primary btn-sm" id="topbar-action" onclick="openAddModal()">+ Add New</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+  <!-- ===== DASHBOARD ===== -->
+  <div class="page active" id="page-dashboard">
+    <div class="stats-grid">
+      <div class="stat-card teal" onclick="showPage('students',document.querySelectorAll('.nav-item')[3])">
+        <div class="stat-icon">👨‍🎓</div><div class="stat-value" id="dash-students">7</div>
+        <div class="stat-label">Total Students</div><div class="stat-change up" id="dash-students-change">▲ Active enrollment</div>
+      </div>
+      <div class="stat-card amber" onclick="showPage('attendance',document.querySelectorAll('.nav-item')[4])">
+        <div class="stat-icon">✅</div><div class="stat-value" id="dash-att">—</div>
+        <div class="stat-label">Today's Attendance</div><div class="stat-change up" id="dash-att-label">Click to mark</div>
+      </div>
+      <div class="stat-card rose" onclick="showPage('fees',document.querySelectorAll('.nav-item')[6])">
+        <div class="stat-icon">💰</div><div class="stat-value" id="dash-fees">₹0</div>
+        <div class="stat-label">Fees Collected</div><div class="stat-change up" id="dash-fees-label">This month</div>
+      </div>
+      <div class="stat-card sky" onclick="showPage('notices',document.querySelectorAll('.nav-item')[8])">
+        <div class="stat-icon">📢</div><div class="stat-value" id="dash-notices">4</div>
+        <div class="stat-label">Active Notices</div><div class="stat-change up">Click to view</div>
+      </div>
+    </div>
+    <div class="quick-actions">
+      <div class="qa-btn" onclick="openAddModal()"><div class="qa-icon">➕</div><div class="qa-label">Add Student</div></div>
+      <div class="qa-btn" onclick="showPage('attendance',document.querySelectorAll('.nav-item')[4])"><div class="qa-icon">📋</div><div class="qa-label">Mark Attendance</div></div>
+      <div class="qa-btn" onclick="openCollectFeeModal()"><div class="qa-icon">💳</div><div class="qa-label">Collect Fee</div></div>
+      <div class="qa-btn" onclick="openNoticeModal()"><div class="qa-icon">📢</div><div class="qa-label">Post Notice</div></div>
+    </div>
+    <div class="three-col">
+      <div>
+        <div class="section-header"><div class="section-title">Recent Students</div><button class="btn btn-outline btn-sm" onclick="showPage('students',document.querySelectorAll('.nav-item')[3])">View All</button></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Student</th><th>Class</th><th>Fee</th></tr></thead>
+          <tbody id="dash-student-list"></tbody>
+        </table></div>
+      </div>
+      <div>
+        <div class="section-title" style="margin-bottom:14px">Notice Board</div>
+        <div class="card" id="dash-notices-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== STUDENTS ===== -->
+  <div class="page" id="page-students">
+    <div class="section-header">
+      <div class="section-title">Student Management</div>
+      <div style="display:flex;gap:10px">
+        <input class="search-input" id="student-search" placeholder="🔍 Search..." oninput="renderStudents()"/>
+        <button class="btn btn-primary" onclick="openAddModal()">+ Add Student</button>
+      </div>
+    </div>
+    <div class="tabs" id="class-tabs">
+      <div class="tab active" onclick="filterClass('all',this)">All</div>
+      <div class="tab" onclick="filterClass('10',this)">Class 10</div>
+      <div class="tab" onclick="filterClass('9',this)">Class 9</div>
+      <div class="tab" onclick="filterClass('8',this)">Class 8</div>
+      <div class="tab" onclick="filterClass('7',this)">Class 7</div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Student</th><th>Roll</th><th>Class</th><th>Parent</th><th>Contact</th><th>Fee</th><th>Actions</th></tr></thead>
+      <tbody id="students-tbody"></tbody>
+    </table></div>
+    <div id="student-count" style="font-size:12px;color:var(--muted);margin-top:10px;text-align:right"></div>
+  </div>
+
+  <!-- ===== ATTENDANCE ===== -->
+  <div class="page" id="page-attendance">
+    <div class="section-header">
+      <div class="section-title">Attendance Tracker</div>
+      <div style="display:flex;gap:10px">
+        <select class="form-input" id="att-class-select" onchange="renderAttendance()" style="width:130px">
+          <option value="all">All Classes</option>
+          <option value="10-A">Class 10-A</option>
+          <option value="9-B">Class 9-B</option>
+          <option value="8-A">Class 8-A</option>
+        </select>
+        <button class="btn btn-primary" onclick="saveAttendance()">💾 Save Attendance</button>
+        <button class="btn btn-outline btn-sm" onclick="exportAttendance()">📤 Export</button>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card teal"><div class="stat-icon">✅</div><div class="stat-value" id="att-present-count">0</div><div class="stat-label">Present Today</div></div>
+      <div class="stat-card rose"><div class="stat-icon">❌</div><div class="stat-value" id="att-absent-count">0</div><div class="stat-label">Absent Today</div></div>
+      <div class="stat-card amber"><div class="stat-icon">📊</div><div class="stat-value" id="att-rate">0%</div><div class="stat-label">Attendance Rate</div></div>
+      <div class="stat-card sky"><div class="stat-icon">📅</div><div class="stat-value">March</div><div class="stat-label">Current Month</div></div>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">Mark Today's Attendance — <span id="att-date-label">31 March 2026</span></div>
+        <div id="att-student-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Monthly Overview — March 2026</div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:8px">
+          <div class="att-day-label">Mon</div><div class="att-day-label">Tue</div><div class="att-day-label">Wed</div>
+          <div class="att-day-label">Thu</div><div class="att-day-label">Fri</div><div class="att-day-label">Sat</div><div class="att-day-label">Sun</div>
+        </div>
+        <div class="att-grid" id="att-calendar"></div>
+        <div style="display:flex;gap:14px;margin-top:14px;font-size:11px;color:var(--muted)">
+          <span>🟢 Present</span><span>🔴 Absent</span><span>⬜ Holiday/Weekend</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TIMETABLE ===== -->
+  <div class="page" id="page-timetable">
+    <div class="section-header">
+      <div class="section-title">Class Timetable</div>
+      <div style="display:flex;gap:10px">
+        <select class="form-input" id="tt-class-select" onchange="renderTimetable()" style="width:140px">
+          <option value="10-A">Class 10-A</option>
+          <option value="10-B">Class 10-B</option>
+          <option value="9-A">Class 9-A</option>
+          <option value="9-B">Class 9-B</option>
+        </select>
+        <button class="btn btn-primary" onclick="openTimetableModal()">✏️ Edit Slot</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="tt-grid" id="tt-grid"></div>
+    </div>
+    <div style="display:flex;gap:16px;margin-top:14px;flex-wrap:wrap;font-size:12px">
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:3px;background:rgba(0,201,167,0.3);display:inline-block"></span>Mathematics</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:3px;background:rgba(79,195,247,0.3);display:inline-block"></span>Science</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:3px;background:rgba(245,166,35,0.3);display:inline-block"></span>English</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:3px;background:rgba(255,107,107,0.3);display:inline-block"></span>History</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:3px;background:rgba(167,139,250,0.3);display:inline-block"></span>P.E.</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:3px;background:rgba(52,211,153,0.3);display:inline-block"></span>Art</span>
+    </div>
+  </div>
+
+  <!-- ===== FEES ===== -->
+  <div class="page" id="page-fees">
+    <div class="section-header">
+      <div class="section-title">Fees &amp; Payments</div>
+      <button class="btn btn-primary" onclick="openCollectFeeModal()">+ Record Payment</button>
+    </div>
+    <div class="fee-summary">
+      <div class="fee-box"><div class="fee-box-label">Total Expected</div><div class="fee-box-value" id="fee-expected">₹0</div></div>
+      <div class="fee-box"><div class="fee-box-label">Collected</div><div class="fee-box-value" style="color:var(--teal)" id="fee-collected">₹0</div></div>
+      <div class="fee-box"><div class="fee-box-label">Pending</div><div class="fee-box-value" style="color:var(--rose)" id="fee-pending">₹0</div></div>
+    </div>
+    <div class="card" style="margin-bottom:18px">
+      <div class="progress-bar-wrap">
+        <div class="progress-label"><span>Collection Progress</span><span id="fee-pct" style="color:var(--teal)">0%</span></div>
+        <div class="progress-bar"><div class="progress-fill" id="fee-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Student</th><th>Class</th><th>Amount</th><th>Due Date</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody id="fees-tbody"></tbody>
+    </table></div>
+  </div>
+
+  <!-- ===== NOTICES ===== -->
+  <div class="page" id="page-notices">
+    <div class="section-header">
+      <div class="section-title">Notice Board</div>
+      <button class="btn btn-primary" onclick="openNoticeModal()">+ Post Notice</button>
+    </div>
+    <div class="two-col">
+      <div id="notices-list"></div>
+      <div class="card">
+        <div class="card-title">Post New Notice</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="quick-notice-title" placeholder="Notice title"/></div>
+          <div class="form-group"><label class="form-label">Category</label>
+            <select class="form-input" id="quick-notice-cat">
+              <option value="Event">Event</option><option value="Exam">Exam</option>
+              <option value="Finance">Finance</option><option value="Holiday">Holiday</option><option value="General">General</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Message</label><textarea class="form-input" id="quick-notice-msg" placeholder="Write notice here..." rows="4"></textarea></div>
+          <div class="form-group">
+            <label class="form-label">Send To</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <span class="badge badge-green" id="send-parents" onclick="toggleSend(this)" style="cursor:pointer;padding:6px 12px">✓ All Parents</span>
+              <span class="badge badge-sky" id="send-teachers" onclick="toggleSend(this)" style="cursor:pointer;padding:6px 12px">All Teachers</span>
+              <span class="badge badge-amber" id="send-students" onclick="toggleSend(this)" style="cursor:pointer;padding:6px 12px">All Students</span>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="postNotice()">📢 Publish Notice</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- end content -->
+</main>
+
+<!-- ===== ADD/EDIT STUDENT MODAL ===== -->
+<div class="modal-overlay" id="student-modal" onclick="if(event.target===this)closeModal('student-modal')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="student-modal-title">Add New Student</div>
+      <button class="modal-close" onclick="closeModal('student-modal')">✕</button>
+    </div>
+    <form onsubmit="saveStudent(event)">
+      <div class="form-grid">
+        <div class="form-group full">
+          <div class="photo-upload" id="photo-zone">
+            <input type="file" accept="image/*" onchange="previewPhoto(this)"/>
+            <img id="photo-prev" class="photo-preview" src="" style="display:none"/>
+            <div id="photo-ph"><div style="font-size:26px;margin-bottom:5px">📷</div><div style="font-size:12px;color:var(--muted)">Upload photo (optional)</div></div>
+          </div>
+        </div>
+        <div class="form-section-title">Student Details</div>
+        <div class="form-group"><label class="form-label">Full Name *</label><input class="form-input" id="f-name" placeholder="Aarav Kumar" required/></div>
+        <div class="form-group"><label class="form-label">Roll No *</label><input class="form-input" id="f-roll" placeholder="08" required/></div>
+        <div class="form-group"><label class="form-label">Class *</label>
+          <select class="form-input" id="f-class" required>
+            <option value="">Select class</option>
+            <option>10-A</option><option>10-B</option><option>9-A</option><option>9-B</option>
+            <option>8-A</option><option>8-B</option><option>7-A</option><option>7-B</option><option>7-C</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="f-email" type="email" placeholder="student@school.in"/></div>
+        <div class="form-group"><label class="form-label">Date of Birth</label><input class="form-input" id="f-dob" type="date"/></div>
+        <div class="form-group"><label class="form-label">Gender</label>
+          <select class="form-input" id="f-gender"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select>
+        </div>
+        <div class="form-divider"></div>
+        <div class="form-section-title">Parent Details</div>
+        <div class="form-group"><label class="form-label">Parent Name *</label><input class="form-input" id="f-parent" placeholder="Ramesh Kumar" required/></div>
+        <div class="form-group"><label class="form-label">Contact *</label><input class="form-input" id="f-contact" placeholder="98765 43210" required/></div>
+        <div class="form-group"><label class="form-label">Parent Email</label><input class="form-input" id="f-pemail" type="email" placeholder="parent@email.com"/></div>
+        <div class="form-group"><label class="form-label">Relationship</label>
+          <select class="form-input" id="f-relation"><option>Father</option><option>Mother</option><option>Guardian</option></select>
+        </div>
+        <div class="form-group full"><label class="form-label">Address</label><input class="form-input" id="f-address" placeholder="Home address"/></div>
+        <div class="form-divider"></div>
+        <div class="form-section-title">Fee Details</div>
+        <div class="form-group"><label class="form-label">Fee Status</label>
+          <select class="form-input" id="f-fee"><option value="Paid">Paid</option><option value="Partial">Partial</option><option value="Overdue">Overdue</option><option value="Pending">Pending</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Amount (₹)</label><input class="form-input" id="f-amount" type="number" placeholder="12000"/></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('student-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="student-save-btn">✅ Save Student</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== COLLECT FEE MODAL ===== -->
+<div class="modal-overlay" id="fee-modal" onclick="if(event.target===this)closeModal('fee-modal')">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title">Record Payment</div>
+      <button class="modal-close" onclick="closeModal('fee-modal')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full"><label class="form-label">Student *</label>
+        <select class="form-input" id="fee-student-select"></select>
+      </div>
+      <div class="form-group"><label class="form-label">Amount (₹) *</label><input class="form-input" id="fee-amount-input" type="number" placeholder="12000"/></div>
+      <div class="form-group"><label class="form-label">Payment Mode</label>
+        <select class="form-input" id="fee-mode"><option>Cash</option><option>Online</option><option>Cheque</option><option>UPI</option></select>
+      </div>
+      <div class="form-group full"><label class="form-label">Fee Type</label>
+        <select class="form-input" id="fee-type"><option>Tuition</option><option>Transport</option><option>Lab Fee</option><option>Sports</option><option>Library</option></select>
+      </div>
+      <div class="form-group full"><label class="form-label">Note</label><input class="form-input" id="fee-note" placeholder="Optional note"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('fee-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="recordPayment()">💳 Record Payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TIMETABLE EDIT MODAL ===== -->
+<div class="modal-overlay" id="tt-modal" onclick="if(event.target===this)closeModal('tt-modal')">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title">Edit Timetable Slot</div>
+      <button class="modal-close" onclick="closeModal('tt-modal')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Day</label><input class="form-input" id="tt-day" readonly style="opacity:0.6"/></div>
+      <div class="form-group"><label class="form-label">Time</label><input class="form-input" id="tt-time-label" readonly style="opacity:0.6"/></div>
+      <div class="form-group full"><label class="form-label">Subject</label>
+        <select class="form-input" id="tt-subject">
+          <option value="">-- Free Period --</option>
+          <option>Mathematics</option><option>Science</option><option>English</option>
+          <option>History</option><option>P.E.</option><option>Art</option><option>Computer</option><option>Hindi</option>
+        </select>
+      </div>
+      <div class="form-group full"><label class="form-label">Teacher</label>
+        <select class="form-input" id="tt-teacher">
+          <option value="">-- None --</option>
+          <option>Mr. Sharma</option><option>Ms. Rao</option><option>Ms. Nair</option>
+          <option>Mr. Gupta</option><option>Mr. Singh</option><option>Ms. Joshi</option><option>Mr. Verma</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('tt-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTimetableSlot()">💾 Save Slot</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== NOTICE MODAL ===== -->
+<div class="modal-overlay" id="notice-modal" onclick="if(event.target===this)closeModal('notice-modal')">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title">Post New Notice</div>
+      <button class="modal-close" onclick="closeModal('notice-modal')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full"><label class="form-label">Title *</label><input class="form-input" id="nm-title" placeholder="Notice title" required/></div>
+      <div class="form-group"><label class="form-label">Category</label>
+        <select class="form-input" id="nm-cat"><option>Event</option><option>Exam</option><option>Finance</option><option>Holiday</option><option>General</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Priority</label>
+        <select class="form-input" id="nm-priority"><option>Normal</option><option>Important</option><option>Urgent</option></select>
+      </div>
+      <div class="form-group full"><label class="form-label">Message *</label><textarea class="form-input" id="nm-msg" rows="4" placeholder="Write your notice..." required></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('notice-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNotice()">📢 Publish</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"><span style="color:var(--teal);font-size:18px">✅</span><span id="toast-msg">Done!</span></div>
+
+<script>
+// ══════════════════════════════════════════
+// DATA STORE
+// ══════════════════════════════════════════
+let editingStudentId = null;
+let editingTTKey = null;
+let photoData = "";
+
+let students = [
+  {id:2401,name:"Aarav Kumar",  roll:"01",cls:"10-A",email:"aarav@edu.in",  parent:"Ramesh Kumar", contact:"98765 43210",fee:"Paid",   amount:12000,photo:"",dob:"",gender:"Male",  pemail:"",relation:"Father",address:"",colors:["#00c9a7","#4fc3f7"]},
+  {id:2402,name:"Priya Sharma", roll:"02",cls:"9-B", email:"priya@edu.in",  parent:"Sunita Sharma",contact:"91234 56789",fee:"Paid",   amount:11500,photo:"",dob:"",gender:"Female",pemail:"",relation:"Mother",address:"",colors:["#f5a623","#ff6b6b"]},
+  {id:2403,name:"Rohan Mehta",  roll:"03",cls:"8-A", email:"rohan@edu.in",  parent:"Anita Mehta",  contact:"97890 12345",fee:"Partial",amount:6000, photo:"",dob:"",gender:"Male",  pemail:"",relation:"Mother",address:"",colors:["#a78bfa","#f472b6"]},
+  {id:2404,name:"Neha Kaur",    roll:"04",cls:"10-B",email:"neha@edu.in",   parent:"Gurpreet Kaur",contact:"99887 76655",fee:"Paid",   amount:12000,photo:"",dob:"",gender:"Female",pemail:"",relation:"Father",address:"",colors:["#34d399","#4fc3f7"]},
+  {id:2405,name:"Vivek Patel",  roll:"05",cls:"7-C", email:"vivek@edu.in",  parent:"Dhruv Patel",  contact:"88990 01122",fee:"Overdue",amount:13500,photo:"",dob:"",gender:"Male",  pemail:"",relation:"Father",address:"",colors:["#fb7185","#fbbf24"]},
+  {id:2406,name:"Sneha Agarwal",roll:"06",cls:"9-A", email:"sneha@edu.in",  parent:"Mohan Agarwal",contact:"77665 54433",fee:"Paid",   amount:11500,photo:"",dob:"",gender:"Female",pemail:"",relation:"Father",address:"",colors:["#818cf8","#34d399"]},
+  {id:2407,name:"Karan Rao",    roll:"07",cls:"8-B", email:"karan@edu.in",  parent:"Suresh Rao",   contact:"98001 23456",fee:"Partial",amount:7000, photo:"",dob:"",gender:"Male",  pemail:"",relation:"Father",address:"",colors:["#fbbf24","#f472b6"]},
+];
+
+let attendance = {}; // { "studentId_date": "present"|"absent" }
+const TODAY = "2026-03-31";
+
+let notices = [
+  {id:1,title:"Annual Day — April 15",cat:"Event",  msg:"All students arrive by 9AM. Parents invited. Cultural performances by each class.",date:"28 Mar 2026",color:"#ff6b6b",views:215},
+  {id:2,title:"Q4 Exam Schedule Released",cat:"Exam",msg:"Final exams start April 20. Timetable on portal. Students start revision immediately.",date:"25 Mar 2026",color:"#f5a623",views:248},
+  {id:3,title:"Fee Last Date: 31 March",cat:"Finance",msg:"Clear all pending dues before deadline. Late payments attract ₹200/month penalty. Online payment accepted.",date:"20 Mar 2026",color:"#00c9a7",views:180},
+  {id:4,title:"Holiday: Ram Navami — 6 Apr",cat:"Holiday",msg:"School will remain closed on 6th April on account of Ram Navami.",date:"18 Mar 2026",color:"#4fc3f7",views:230},
+];
+
+let timetableData = {
+  "10-A":{
+    "8:00": {Mon:"Mathematics/Mr. Sharma",Tue:"Science/Ms. Rao",    Wed:"English/Ms. Nair",   Thu:"History/Mr. Gupta", Fri:"Mathematics/Mr. Sharma",Sat:"Art/Ms. Joshi"},
+    "9:00": {Mon:"Science/Ms. Rao",       Tue:"Mathematics/Mr. Sharma",Wed:"History/Mr. Gupta",Thu:"Science/Ms. Rao",   Fri:"English/Ms. Nair",      Sat:"P.E./Mr. Singh"},
+    "10:00":{Mon:"☕ Break",              Tue:"☕ Break",              Wed:"☕ Break",            Thu:"☕ Break",           Fri:"☕ Break",               Sat:"☕ Break"},
+    "10:30":{Mon:"English/Ms. Nair",      Tue:"History/Mr. Gupta",   Wed:"Mathematics/Mr. Sharma",Thu:"Art/Ms. Joshi", Fri:"Science/Ms. Rao",       Sat:"History/Mr. Gupta"},
+    "11:30":{Mon:"History/Mr. Gupta",     Tue:"P.E./Mr. Singh",      Wed:"Science/Ms. Rao",    Thu:"Mathematics/Mr. Sharma",Fri:"Art/Ms. Joshi",     Sat:""},
+    "12:30":{Mon:"🍱 Lunch",              Tue:"🍱 Lunch",              Wed:"🍱 Lunch",            Thu:"🍱 Lunch",           Fri:"🍱 Lunch",              Sat:""},
+    "1:30": {Mon:"P.E./Mr. Singh",        Tue:"Art/Ms. Joshi",       Wed:"P.E./Mr. Singh",     Thu:"English/Ms. Nair",  Fri:"Mathematics/Mr. Sharma",Sat:""},
+  }
+};
+// Copy 10-A template for other classes
+["10-B","9-A","9-B"].forEach(c => { timetableData[c] = JSON.parse(JSON.stringify(timetableData["10-A"])); });
+
+let editingTTDay="",editingTTTime="";
+
+// ══════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════
+function getInitials(n){return n.split(" ").map(w=>w[0]).join("").substring(0,2).toUpperCase();}
+function avatarColors(n){const p=[["#00c9a7","#4fc3f7"],["#f5a623","#ff6b6b"],["#a78bfa","#f472b6"],["#34d399","#4fc3f7"],["#fb7185","#fbbf24"],["#818cf8","#34d399"],["#fbbf24","#f472b6"],["#60a5fa","#34d399"],["#f87171","#a78bfa"]];return p[n.charCodeAt(0)%p.length];}
+function feeBadge(f){const m={Paid:"badge-green",Partial:"badge-amber",Overdue:"badge-rose",Pending:"badge-amber"};return`<span class="badge ${m[f]||'badge-amber'}">${f}</span>`;}
+function fmtCurrency(n){return"₹"+Number(n||0).toLocaleString("en-IN");}
+function showToast(msg,color){
+  const t=document.getElementById("toast");
+  t.querySelector("span:first-child").style.color=color||"var(--teal)";
+  document.getElementById("toast-msg").textContent=msg;
+  t.classList.add("show");setTimeout(()=>t.classList.remove("show"),3000);
+}
+function closeModal(id){document.getElementById(id).classList.remove("open");editingStudentId=null;}
+function openModal(id){document.getElementById(id).classList.add("open");}
+
+// ══════════════════════════════════════════
+// PAGE NAV
+// ══════════════════════════════════════════
+function showPage(id,el){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));
+  document.getElementById("page-"+id).classList.add("active");
+  if(el&&el.classList)el.classList.add("active");
+  const titles={dashboard:"Dashboard Overview",students:"Student Management",attendance:"Attendance Tracker",timetable:"Class Timetable",fees:"Fees & Payments",notices:"Notice Board"};
+  document.getElementById("page-heading").innerHTML="Good morning, <span>"+titles[id]+"</span>";
+  const actions={dashboard:"+ Add New",students:"+ Add Student",attendance:"💾 Save Attendance",timetable:"✏️ Edit Slot",fees:"+ Record Payment",notices:"+ Post Notice"};
+  document.getElementById("topbar-action").textContent=actions[id]||"+ Add New";
+  const callbacks={dashboard:openAddModal,students:openAddModal,attendance:saveAttendance,timetable:openTimetableModal,fees:openCollectFeeModal,notices:openNoticeModal};
+  document.getElementById("topbar-action").onclick=callbacks[id];
+  if(id==="students")renderStudents();
+  if(id==="fees")renderFees();
+  if(id==="notices")renderNotices();
+  if(id==="attendance")renderAttendance();
+  if(id==="timetable")renderTimetable();
+  if(id==="dashboard")renderDashboard();
+}
+
+// ══════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════
+function renderDashboard(){
+  document.getElementById("dash-students").textContent=students.length;
+  document.getElementById("nav-count").textContent=students.length;
+  // Attendance today
+  const todayAtt=students.map(s=>attendance[s.id+"_"+TODAY]||"unmarked");
+  const presentCount=todayAtt.filter(a=>a==="present").length;
+  const markedCount=todayAtt.filter(a=>a!=="unmarked").length;
+  if(markedCount>0){
+    const pct=Math.round(presentCount/students.length*100);
+    document.getElementById("dash-att").textContent=pct+"%";
+    document.getElementById("dash-att-label").textContent=presentCount+" / "+students.length+" present";
+  } else {
+    document.getElementById("dash-att").textContent="—";
+    document.getElementById("dash-att-label").textContent="Not marked yet";
+  }
+  // Fees
+  const paidStudents=students.filter(s=>s.fee==="Paid");
+  const collected=paidStudents.reduce((s,st)=>s+(st.amount||0),0);
+  document.getElementById("dash-fees").textContent=fmtCurrency(collected);
+  document.getElementById("fee-badge").textContent=students.filter(s=>s.fee==="Overdue"||s.fee==="Partial"||s.fee==="Pending").length;
+  // Notices
+  document.getElementById("dash-notices").textContent=notices.length;
+  // Recent students table
+  const recent=students.slice(-5).reverse();
+  document.getElementById("dash-student-list").innerHTML=recent.map(s=>{
+    const c=s.colors;
+    const av=s.photo?`<img src="${s.photo}" style="width:28px;height:28px;border-radius:50%;object-fit:cover">`:`<div class="avatar-sm" style="width:28px;height:28px;background:linear-gradient(135deg,${c[0]},${c[1]})">${getInitials(s.name)}</div>`;
+    return`<tr><td><div class="flex-center">${av}<span style="font-size:13px;font-weight:600">${s.name}</span></div></td><td><span class="badge badge-sky">${s.cls}</span></td><td>${feeBadge(s.fee)}</td></tr>`;
+  }).join("");
+  // Notices sidebar
+  document.getElementById("dash-notices-list").innerHTML=notices.slice(0,4).map(n=>`
+    <div class="notice-item">
+      <div class="notice-dot" style="background:${n.color}"></div>
+      <div><div class="notice-title">${n.title}</div><div class="notice-meta">${n.date}</div></div>
+    </div>`).join("");
+}
+
+// ══════════════════════════════════════════
+// STUDENTS
+// ══════════════════════════════════════════
+let currentClassFilter="all";
+function filterClass(cls,el){
+  currentClassFilter=cls;
+  document.querySelectorAll("#class-tabs .tab").forEach(t=>t.classList.remove("active"));
+  el.classList.add("active");
+  renderStudents();
+}
+function globalSearch(v){if(v.trim()){showPage('students',document.querySelectorAll('.nav-item')[3]);document.getElementById("student-search").value=v;renderStudents();}}
+function renderStudents(){
+  const search=(document.getElementById("student-search")||{value:""}).value.toLowerCase();
+  let list=students;
+  if(currentClassFilter!=="all")list=list.filter(s=>s.cls.startsWith(currentClassFilter));
+  if(search)list=list.filter(s=>s.name.toLowerCase().includes(search)||s.parent.toLowerCase().includes(search)||s.cls.toLowerCase().includes(search)||s.roll.includes(search));
+  const tbody=document.getElementById("students-tbody");
+  if(!list.length){tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:30px">No students found</td></tr>`;return;}
+  tbody.innerHTML=list.map(s=>{
+    const c=s.colors;
+    const av=s.photo?`<img src="${s.photo}" style="width:32px;height:32px;border-radius:50%;object-fit:cover">`:`<div class="avatar-sm" style="background:linear-gradient(135deg,${c[0]},${c[1]})">${getInitials(s.name)}</div>`;
+    return`<tr>
+      <td><div class="flex-center">${av}<div><div style="font-weight:600">${s.name}</div><div style="font-size:11px;color:var(--muted)">${s.email||"ID: "+s.id}</div></div></div></td>
+      <td>${s.roll}</td><td><span class="badge badge-sky">${s.cls}</span></td>
+      <td>${s.parent}</td><td>${s.contact}</td><td>${feeBadge(s.fee)}</td>
+      <td style="display:flex;gap:5px">
+        <button class="action-btn" onclick="editStudent(${s.id})" style="color:var(--sky);border-color:rgba(79,195,247,0.3)">✏️ Edit</button>
+        <button class="action-btn danger" onclick="deleteStudent(${s.id})">🗑</button>
+      </td>
+    </tr>`;
+  }).join("");
+  document.getElementById("student-count").textContent=`Showing ${list.length} of ${students.length} students`;
+  document.getElementById("nav-count").textContent=students.length;
+}
+function deleteStudent(id){
+  if(!confirm("Remove this student from records?"))return;
+  students=students.filter(s=>s.id!==id);
+  renderStudents();renderDashboard();
+  showToast("Student removed","var(--rose)");
+}
+function openAddModal(){
+  editingStudentId=null;photoData="";
+  document.getElementById("student-modal-title").textContent="Add New Student";
+  document.getElementById("student-save-btn").textContent="✅ Save Student";
+  document.getElementById("photo-prev").style.display="none";
+  document.getElementById("photo-ph").style.display="block";
+  ["f-name","f-roll","f-email","f-parent","f-contact","f-pemail","f-address","f-dob","f-amount"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+  ["f-class","f-gender","f-fee","f-relation"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=el.options[0].value;});
+  openModal("student-modal");
+}
+function editStudent(id){
+  const s=students.find(s=>s.id===id);if(!s)return;
+  editingStudentId=id;photoData=s.photo||"";
+  document.getElementById("student-modal-title").textContent="Edit Student";
+  document.getElementById("student-save-btn").textContent="💾 Update Student";
+  const set=(i,v)=>{const el=document.getElementById(i);if(el)el.value=v||"";};
+  set("f-name",s.name);set("f-roll",s.roll);set("f-class",s.cls);set("f-email",s.email);
+  set("f-parent",s.parent);set("f-contact",s.contact);set("f-pemail",s.pemail);
+  set("f-relation",s.relation||"Father");set("f-address",s.address);set("f-dob",s.dob);
+  set("f-gender",s.gender);set("f-fee",s.fee||"Paid");set("f-amount",s.amount);
+  const prev=document.getElementById("photo-prev");
+  if(photoData){prev.src=photoData;prev.style.display="block";document.getElementById("photo-ph").style.display="none";}
+  else{prev.style.display="none";document.getElementById("photo-ph").style.display="block";}
+  openModal("student-modal");
+}
+function previewPhoto(input){
+  const file=input.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=e=>{photoData=e.target.result;document.getElementById("photo-prev").src=photoData;document.getElementById("photo-prev").style.display="block";document.getElementById("photo-ph").style.display="none";};
+  r.readAsDataURL(file);
+}
+function saveStudent(e){
+  e.preventDefault();
+  const g=id=>document.getElementById(id).value.trim();
+  const data={name:g("f-name"),roll:g("f-roll"),cls:document.getElementById("f-class").value,email:g("f-email"),parent:g("f-parent"),contact:g("f-contact"),pemail:g("f-pemail"),relation:document.getElementById("f-relation").value,address:g("f-address"),dob:g("f-dob"),gender:document.getElementById("f-gender").value,fee:document.getElementById("f-fee").value,amount:Number(g("f-amount"))||0,photo:photoData};
+  if(editingStudentId!==null){
+    const idx=students.findIndex(s=>s.id===editingStudentId);
+    if(idx!==-1)students[idx]={...students[idx],...data,colors:avatarColors(data.name)};
+    showToast(data.name+" updated successfully!");
+  } else {
+    const newId=2400+students.length+1;
+    students.push({id:newId,...data,colors:avatarColors(data.name)});
+    showToast(data.name+" added successfully!");
+  }
+  closeModal("student-modal");renderStudents();renderDashboard();renderFees();
+}
+
+// ══════════════════════════════════════════
+// ATTENDANCE
+// ══════════════════════════════════════════
+function renderAttendance(){
+  const clsFilter=document.getElementById("att-class-select").value;
+  const list=clsFilter==="all"?students:students.filter(s=>s.cls===clsFilter);
+  const container=document.getElementById("att-student-list");
+  container.innerHTML=list.map(s=>{
+    const key=s.id+"_"+TODAY;
+    const status=attendance[key]||"unmarked";
+    const c=s.colors;
+    const av=s.photo?`<img src="${s.photo}" style="width:30px;height:30px;border-radius:50%;object-fit:cover">`:`<div class="avatar-sm" style="width:30px;height:30px;font-size:11px;background:linear-gradient(135deg,${c[0]},${c[1]})">${getInitials(s.name)}</div>`;
+    return`<div class="att-student-row">
+      <div class="flex-center">${av}<div><div style="font-size:13px;font-weight:600">${s.name}</div><div style="font-size:11px;color:var(--muted)">${s.cls}</div></div></div>
+      <div class="att-toggle">
+        <button class="att-toggle-btn ${status==="present"?"present":""}" onclick="markAtt(${s.id},'present',this)">✅ Present</button>
+        <button class="att-toggle-btn ${status==="absent"?"absent":""}" onclick="markAtt(${s.id},'absent',this)">❌ Absent</button>
+      </div>
+    </div>`;
+  }).join("");
+  updateAttStats();
+  renderCalendar();
+}
+function markAtt(id,status,btn){
+  const key=id+"_"+TODAY;
+  attendance[key]=status;
+  const row=btn.parentElement;
+  row.querySelectorAll(".att-toggle-btn").forEach(b=>{b.classList.remove("present","absent");});
+  btn.classList.add(status);
+  updateAttStats();
+}
+function updateAttStats(){
+  const present=students.filter(s=>attendance[s.id+"_"+TODAY]==="present").length;
+  const absent=students.filter(s=>attendance[s.id+"_"+TODAY]==="absent").length;
+  const total=students.length;
+  document.getElementById("att-present-count").textContent=present;
+  document.getElementById("att-absent-count").textContent=absent;
+  document.getElementById("att-rate").textContent=total?Math.round(present/total*100)+"%":"0%";
+}
+function saveAttendance(){
+  const marked=students.filter(s=>attendance[s.id+"_"+TODAY]).length;
+  showToast("Attendance saved for "+marked+" students!");
+  renderDashboard();
+}
+function exportAttendance(){
+  let csv="Name,Class,Date,Status\n";
+  students.forEach(s=>{const k=s.id+"_"+TODAY;csv+=`${s.name},${s.cls},${TODAY},${attendance[k]||"Not Marked"}\n`;});
+  const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download="attendance_"+TODAY+".csv";a.click();
+  showToast("Attendance exported as CSV!");
+}
+function renderCalendar(){
+  const days=["","","","","","","","","","3","4","5","6","7","","","10","11","12","13","14","","","17","18","19","20","21","","","24","25","26","27","28","","","31"];
+  const weekends=[7,8,14,15,21,22,28,29];
+  const html=days.map((d,i)=>{
+    if(!d)return`<div></div>`;
+    const idx=i;
+    if(weekends.includes(idx))return`<div class="att-cell att-holiday">${d}</div>`;
+    if(d==="31")return`<div class="att-cell att-today att-present">${d}</div>`;
+    const dayNum=parseInt(d);
+    if(dayNum<11)return`<div class="att-cell att-present">${d}</div>`;
+    if(dayNum===11||dayNum===21)return`<div class="att-cell att-absent">${d}</div>`;
+    return`<div class="att-cell att-present">${d}</div>`;
+  }).join("");
+  document.getElementById("att-calendar").innerHTML=html;
+}
+
+// ══════════════════════════════════════════
+// TIMETABLE
+// ══════════════════════════════════════════
+const subjectClass={Mathematics:"tt-math",Science:"tt-sci",English:"tt-eng",History:"tt-hist","P.E.":"tt-pe",Art:"tt-art",Computer:"tt-sci",Hindi:"tt-eng"};
+const times=["8:00","9:00","10:00","10:30","11:30","12:30","1:30"];
+const days=["Mon","Tue","Wed","Thu","Fri","Sat"];
+function renderTimetable(){
+  const cls=document.getElementById("tt-class-select").value;
+  const tt=timetableData[cls]||timetableData["10-A"];
+  let html=`<div class="tt-head"></div>`+days.map(d=>`<div class="tt-head">${d}</div>`).join("");
+  times.forEach(t=>{
+    html+=`<div class="tt-time">${t}</div>`;
+    days.forEach(d=>{
+      const slot=(tt[t]&&tt[t][d])||"";
+      if(!slot){html+=`<div class="tt-empty"></div>`;return;}
+      if(slot.includes("Break")||slot.includes("Lunch")){html+=`<div class="tt-slot tt-break"><span class="subj">${slot}</span></div>`;return;}
+      const parts=slot.split("/");const subj=parts[0]||"";const tchr=parts[1]||"";
+      const css=subjectClass[subj]||"tt-math";
+      html+=`<div class="tt-slot ${css}" onclick="openTTEdit('${d}','${t}','${cls}')"><span class="subj">${subj}</span><span class="tchr">${tchr}</span></div>`;
+    });
+  });
+  document.getElementById("tt-grid").innerHTML=html;
+}
+function openTimetableModal(){
+  document.getElementById("tt-day").value="Select slot from grid";
+  document.getElementById("tt-time-label").value="Click any slot";
+  openModal("tt-modal");
+}
+function openTTEdit(day,time,cls){
+  editingTTDay=day;editingTTTime=time;
+  const tt=timetableData[cls]||timetableData["10-A"];
+  const slot=(tt[time]&&tt[time][day])||"";
+  const parts=slot.split("/");
+  document.getElementById("tt-day").value=day+" ("+cls+")";
+  document.getElementById("tt-time-label").value=time;
+  document.getElementById("tt-subject").value=parts[0]||"";
+  document.getElementById("tt-teacher").value=parts[1]||"";
+  openModal("tt-modal");
+}
+function saveTimetableSlot(){
+  const cls=document.getElementById("tt-class-select").value;
+  const subj=document.getElementById("tt-subject").value;
+  const tchr=document.getElementById("tt-teacher").value;
+  if(!editingTTDay||!editingTTTime){closeModal("tt-modal");return;}
+  if(!timetableData[cls])timetableData[cls]={};
+  if(!timetableData[cls][editingTTTime])timetableData[cls][editingTTTime]={};
+  timetableData[cls][editingTTTime][editingTTDay]=subj?(subj+(tchr?"/"+tchr:"")):"";
+  closeModal("tt-modal");renderTimetable();
+  showToast("Timetable slot updated!");
+}
+
+// ══════════════════════════════════════════
+// FEES
+// ══════════════════════════════════════════
+function renderFees(){
+  const total=students.reduce((s,st)=>s+(st.amount||0),0);
+  const collected=students.filter(s=>s.fee==="Paid").reduce((s,st)=>s+(st.amount||0),0);
+  const pending=total-collected;
+  const pct=total?Math.round(collected/total*100):0;
+  document.getElementById("fee-expected").textContent=fmtCurrency(total);
+  document.getElementById("fee-collected").textContent=fmtCurrency(collected);
+  document.getElementById("fee-pending").textContent=fmtCurrency(pending);
+  document.getElementById("fee-pct").textContent=pct+"%";
+  document.getElementById("fee-bar").style.width=pct+"%";
+  document.getElementById("fees-tbody").innerHTML=students.map(s=>`<tr>
+    <td><div class="flex-center"><div class="avatar-sm" style="width:28px;height:28px;font-size:10px;background:linear-gradient(135deg,${s.colors[0]},${s.colors[1]})">${getInitials(s.name)}</div>${s.name}</div></td>
+    <td>${s.cls}</td>
+    <td style="font-weight:600;color:${s.fee==="Paid"?"var(--teal)":s.fee==="Overdue"?"var(--rose)":"var(--amber)"}">${fmtCurrency(s.amount)}</td>
+    <td>31 Mar 2026</td>
+    <td>${feeBadge(s.fee)}</td>
+    <td style="display:flex;gap:5px">
+      ${s.fee!=="Paid"?`<button class="action-btn" onclick="quickPay(${s.id})" style="color:var(--teal);border-color:rgba(0,201,167,0.3)">💳 Pay</button>`:""}
+      <button class="action-btn" onclick="openReceiptModal(${s.id})">🧾 Receipt</button>
+    </td>
+  </tr>`).join("");
+}
+function quickPay(id){
+  const s=students.find(s=>s.id===id);if(!s)return;
+  s.fee="Paid";renderFees();renderDashboard();
+  showToast("Payment recorded for "+s.name+"!");
+}
+function openReceiptModal(id){
+  const s=students.find(s=>s.id===id);if(!s)return;
+  alert(`🧾 RECEIPT\n\nStudent: ${s.name}\nClass: ${s.cls}\nAmount: ${fmtCurrency(s.amount)}\nStatus: ${s.fee}\nDate: ${TODAY}\n\nEduSphere School Management`);
+}
+function openCollectFeeModal(){
+  const sel=document.getElementById("fee-student-select");
+  sel.innerHTML=students.map(s=>`<option value="${s.id}">${s.name} (${s.cls})</option>`).join("");
+  openModal("fee-modal");
+}
+function recordPayment(){
+  const id=Number(document.getElementById("fee-student-select").value);
+  const amount=Number(document.getElementById("fee-amount-input").value);
+  const mode=document.getElementById("fee-mode").value;
+  if(!amount){showToast("Enter a valid amount","var(--rose)");return;}
+  const s=students.find(s=>s.id===id);
+  if(s){s.fee="Paid";s.amount=amount;}
+  closeModal("fee-modal");renderFees();renderDashboard();
+  showToast(`₹${amount.toLocaleString("en-IN")} collected from ${s?.name||"student"} via ${mode}!`);
+}
+
+// ══════════════════════════════════════════
+// NOTICES
+// ══════════════════════════════════════════
+const noticeColors={Event:"#ff6b6b",Exam:"#f5a623",Finance:"#00c9a7",Holiday:"#4fc3f7",General:"#a78bfa"};
+function renderNotices(){
+  document.getElementById("notices-list").innerHTML=notices.map(n=>`
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <div style="background:rgba(${hexToRgb(n.color)},0.15);color:${n.color};border-radius:10px;padding:10px 11px;font-size:22px;flex-shrink:0">${catIcon(n.cat)}</div>
+        <div style="flex:1">
+          <div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:${n.color};margin-bottom:4px">${n.cat}</div>
+          <div style="font-size:15px;font-weight:700;margin-bottom:6px">${n.title}</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6">${n.msg}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:8px">📅 ${n.date} &nbsp;·&nbsp; 👁️ ${n.views} views</div>
+        </div>
+        <button class="action-btn danger" onclick="deleteNotice(${n.id})" style="flex-shrink:0">🗑</button>
+      </div>
+    </div>`).join("");
+}
+function catIcon(c){const m={Event:"🎭",Exam:"📝",Finance:"💰",Holiday:"🎉",General:"📌"};return m[c]||"📌";}
+function hexToRgb(h){const r=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h);return r?`${parseInt(r[1],16)},${parseInt(r[2],16)},${parseInt(r[3],16)}`:"0,0,0";}
+function deleteNotice(id){
+  if(!confirm("Delete this notice?"))return;
+  notices=notices.filter(n=>n.id!==id);renderNotices();renderDashboard();
+  showToast("Notice deleted","var(--rose)");
+}
+function toggleSend(el){el.style.opacity=el.style.opacity==="0.4"?"1":"0.4";}
+function openNoticeModal(){openModal("notice-modal");}
+function saveNotice(){
+  const title=document.getElementById("nm-title").value.trim();
+  const msg=document.getElementById("nm-msg").value.trim();
+  if(!title||!msg){showToast("Fill in title and message","var(--rose)");return;}
+  const cat=document.getElementById("nm-cat").value;
+  const now=new Date();
+  const dateStr=now.getDate()+" "+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][now.getMonth()]+" "+now.getFullYear();
+  notices.unshift({id:Date.now(),title,cat,msg,date:dateStr,color:noticeColors[cat]||"#a78bfa",views:0});
+  closeModal("notice-modal");renderNotices();renderDashboard();
+  document.getElementById("nm-title").value="";document.getElementById("nm-msg").value="";
+  showToast("Notice published successfully!");
+}
+function postNotice(){
+  const title=document.getElementById("quick-notice-title").value.trim();
+  const msg=document.getElementById("quick-notice-msg").value.trim();
+  const cat=document.getElementById("quick-notice-cat").value;
+  if(!title){showToast("Enter a notice title","var(--rose)");return;}
+  const now=new Date();
+  const dateStr=now.getDate()+" "+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][now.getMonth()]+" "+now.getFullYear();
+  notices.unshift({id:Date.now(),title,cat,msg:msg||title,date:dateStr,color:noticeColors[cat]||"#a78bfa",views:0});
+  document.getElementById("quick-notice-title").value="";document.getElementById("quick-notice-msg").value="";
+  renderNotices();renderDashboard();showToast("Notice published!");
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+renderDashboard();
+renderStudents();
+renderAttendance();
+renderTimetable();
+renderFees();
+renderNotices();
+</script>
+</body>
+</html>

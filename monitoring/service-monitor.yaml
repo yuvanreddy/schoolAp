@@ -1,0 +1,178 @@
+# ═══════════════════════════════════════════════
+# monitoring/service-monitor.yaml
+# Prometheus ServiceMonitor for EduSphere App
+# ═══════════════════════════════════════════════
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: school-demo-monitor
+  namespace: production
+  labels:
+    app: school-demo
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: school-demo
+  namespaceSelector:
+    matchNames:
+      - production
+      - staging
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+      honorLabels: true
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: "go_.*"
+          action: drop
+
+---
+# ═══════════════════════════════════════════════
+# monitoring/grafana-dashboards.yaml
+# Grafana Dashboard ConfigMap for EduSphere
+# ═══════════════════════════════════════════════
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: edusphere-grafana-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+    app: kube-prometheus-stack
+data:
+  edusphere-overview.json: |
+    {
+      "title": "EduSphere — School App Overview",
+      "uid": "edusphere-overview",
+      "version": 1,
+      "refresh": "30s",
+      "time": { "from": "now-3h", "to": "now" },
+      "tags": ["edusphere", "school-app"],
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "🟢 App Uptime",
+          "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+          "targets": [{
+            "expr": "avg(up{job='edusphere-school-app'}) * 100",
+            "legendFormat": "Uptime %"
+          }],
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"] },
+            "colorMode": "background",
+            "thresholds": {
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "yellow", "value": 90 },
+                { "color": "green", "value": 99 }
+              ]
+            }
+          }
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "📊 Request Rate (RPS)",
+          "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+          "targets": [{
+            "expr": "sum(rate(http_requests_total{job='edusphere-school-app'}[5m]))",
+            "legendFormat": "Requests/sec"
+          }]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "❌ Error Rate",
+          "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+          "targets": [{
+            "expr": "sum(rate(http_requests_total{job='edusphere-school-app',status=~'5..'}[5m])) / sum(rate(http_requests_total{job='edusphere-school-app'}[5m])) * 100",
+            "legendFormat": "Error %"
+          }],
+          "options": {
+            "thresholds": {
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 1 },
+                { "color": "red", "value": 5 }
+              ]
+            }
+          }
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "⏱️ P95 Latency",
+          "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+          "targets": [{
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job='edusphere-school-app'}[5m]))",
+            "legendFormat": "P95 Latency"
+          }]
+        },
+        {
+          "id": 5,
+          "type": "stat",
+          "title": "☸️ Running Pods",
+          "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+          "targets": [{
+            "expr": "kube_deployment_status_available_replicas{deployment='school-demo', namespace='production'}",
+            "legendFormat": "Pods"
+          }]
+        },
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "HTTP Request Rate by Status Code",
+          "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+          "targets": [
+            {
+              "expr": "sum by(status) (rate(http_requests_total{job='edusphere-school-app'}[5m]))",
+              "legendFormat": "HTTP {{ status }}"
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "type": "timeseries",
+          "title": "Response Latency (P50 / P95 / P99)",
+          "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{job='edusphere-school-app'}[5m]))",
+              "legendFormat": "P50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job='edusphere-school-app'}[5m]))",
+              "legendFormat": "P95"
+            },
+            {
+              "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job='edusphere-school-app'}[5m]))",
+              "legendFormat": "P99"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "type": "timeseries",
+          "title": "CPU Usage — school-demo pods",
+          "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+          "targets": [{
+            "expr": "sum by(pod) (rate(container_cpu_usage_seconds_total{container='school-demo', namespace='production'}[5m]))",
+            "legendFormat": "{{ pod }}"
+          }]
+        },
+        {
+          "id": 9,
+          "type": "timeseries",
+          "title": "Memory Usage — school-demo pods",
+          "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+          "targets": [{
+            "expr": "sum by(pod) (container_memory_working_set_bytes{container='school-demo', namespace='production'})",
+            "legendFormat": "{{ pod }}"
+          }]
+        }
+      ]
+    }

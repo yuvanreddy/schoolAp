@@ -1,0 +1,279 @@
+# ═══════════════════════════════════════════════
+# EduSphere — Kubernetes Manifests
+# ═══════════════════════════════════════════════
+
+---
+# ── Namespace ──────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: production
+  labels:
+    app: edusphere
+    environment: production
+    monitoring: "true"
+
+---
+# ── ConfigMap ──────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: school-demo-config
+  namespace: production
+  labels:
+    app: school-demo
+data:
+  NODE_ENV: "production"
+  PORT: "3000"
+  APP_NAME: "EduSphere"
+  LOG_LEVEL: "info"
+  METRICS_PORT: "9090"
+  METRICS_PATH: "/metrics"
+
+---
+# ── Deployment ─────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: school-demo
+  namespace: production
+  labels:
+    app: school-demo
+    version: "1.0.0"
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: school-demo
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: school-demo
+        version: "1.0.0"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: school-demo-sa
+      imagePullSecrets:
+        - name: ecr-secret
+      terminationGracePeriodSeconds: 30
+
+      containers:
+        - name: school-demo
+          image: 816069153839.dkr.ecr.ap-south-1.amazonaws.com/edusphere-school-app:v1.0.0
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerport: 80
+              protocol: TCP
+            - name: metrics
+              
+              protocol: TCP
+
+          envFrom:
+            - configMapRef:
+                name: school-demo-config
+            - secretRef:
+                name: school-demo-secrets
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          startupProbe:
+            httpGet:
+              path: /
+              port: 80
+            failureThreshold: 30
+            periodSeconds: 10
+
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+            readOnlyRootFilesystem: false
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: logs
+              mountPath: /app/logs
+
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values: [school-demo]
+                topologyKey: kubernetes.io/hostname
+
+---
+# ── Service ────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: school-demo
+  namespace: production
+  labels:
+    app: school-demo
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+spec:
+  type: ClusterIP
+  selector:
+    app: school-demo
+  ports:
+    - name: http
+      port: 80
+      targetport: 80
+      protocol: TCP
+    - name: metrics
+      port: 9090
+      
+      protocol: TCP
+
+---
+# ── Ingress (AWS ALB) ──────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: school-demo
+  namespace: production
+  labels:
+    app: school-demo
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/certificate-arn: 
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/load-balancer-attributes: |
+      idle_timeout.timeout_seconds=60,
+      routing.http2.enabled=true
+spec:
+  rules:
+    - host: workforschool.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: school-demo
+                port:
+                  number: 80
+
+---
+# ── Horizontal Pod Autoscaler ──────────────────
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: school-demo-hpa
+  namespace: production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: school-demo
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+
+---
+# ── ServiceAccount ─────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: school-demo-sa
+  namespace: production
+  labels:
+    app: school-demo
+
+---
+# ── PodDisruptionBudget ────────────────────────
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: school-demo-pdb
+  namespace: production
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: school-demo
