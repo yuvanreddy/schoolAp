@@ -4,6 +4,7 @@ terraform/tfplan
 terraform/*.tfstate
 terraform/*.tfstate.backup
 terraform/.terraform.lock.hcl
+terraform/errored.tfstate
 backend.hcl
 
 # Secrets
